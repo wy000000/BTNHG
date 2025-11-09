@@ -14,9 +14,9 @@ print("start construct HeteroData")
 time1 = time.time()
 path = r"D:\BTNHG\BTNHGV2"
 
+# 1. 读取数据
 print("start read data")
 time1 = time.time()
-# 1. 读取数据
 addr_feat_df = pd.read_csv(os.path.join(path, "addressFeature.csv"))
 coin_feat_df = pd.read_csv(os.path.join(path, "coinFeature.csv"))
 tx_feat_df   = pd.read_csv(os.path.join(path, "TxFeature.csv"))
@@ -25,9 +25,9 @@ time2 = time.time()
 print(f"读取数据时间: {time2 - time1}")
 print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
+# 2. 建立 ID 映射
 print("construct ID map and 构建节点特征矩阵")
 time1 = time.time()
-# 2. 建立 ID 映射
 address_ids = addr_feat_df['addressID'].unique()
 coin_ids    = coin_feat_df['coinID'].unique()
 tx_ids      = tx_feat_df['txID'].unique()
@@ -53,9 +53,9 @@ time2 = time.time()
 print(f"构建ID map and 节点特征矩阵时间: {time2 - time1}")
 print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
+# 5. 建立边关系（向量化处理）
 print("构建边关系")
 time1 = time.time()
-# 5. 建立边关系（向量化处理）
 def build_edge(df, src_col, dst_col, src_map, dst_map):
     """通用边构造函数"""
     src = df[src_col].map(src_map)
@@ -78,10 +78,9 @@ time2 = time.time()
 print(f"构建边关系时间: {time2 - time1}")
 print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
-
+# 6. 给 address 节点加标签
 print("给 address 节点加标签")
 time1 = time.time()
-# 6. 给 address 节点加标签
 address_y = torch.full((len(address_id_map),), -1, dtype=torch.long)
 valid_cluster = edge_df[['addressID', 'clusterID']].dropna()
 for addr, cluster in zip(valid_cluster['addressID'], valid_cluster['clusterID']):
