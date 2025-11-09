@@ -5,29 +5,32 @@ import pandas as pd
 import torch
 from torch_geometric.data import HeteroData
 import os
+import numpy as np
 time2 = time.time()
 print("import time: ", time2 - time1)
 print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
+print("start construct HeteroData")
+time1 = time.time()
+path = r"D:\BTNHG\BTNHGV2"
+
 print("start read data")
 time1 = time.time()
-path = "D:\BTNHG\BTNHGV2"
-# 1. 读取三个特征文件和一个边文件
-# 使用os.path.join确保跨平台兼容性
+# 1. 读取数据
 addr_feat_df = pd.read_csv(os.path.join(path, "addressFeature.csv"))
 coin_feat_df = pd.read_csv(os.path.join(path, "coinFeature.csv"))
-tx_feat_df = pd.read_csv(os.path.join(path, "TxFeature.csv"))
-edge_df = pd.read_csv(os.path.join(path, "hgEdgeV2.csv"))
+tx_feat_df   = pd.read_csv(os.path.join(path, "TxFeature.csv"))
+edge_df      = pd.read_csv(os.path.join(path, "hgEdgeV2.csv"))
 time2 = time.time()
 print(f"读取数据时间: {time2 - time1}")
 print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
-print("start build HeteroData")
+print("construct ID map and 构建节点特征矩阵")
 time1 = time.time()
-# 2. 建立 ID 映射（保证 PyG 节点索引连续）
+# 2. 建立 ID 映射
 address_ids = addr_feat_df['addressID'].unique()
 coin_ids    = coin_feat_df['coinID'].unique()
-tx_ids      = tx_feat_df['TxID'].unique()   # 注意这里改成 TxID
+tx_ids      = tx_feat_df['txID'].unique()
 
 address_id_map = {id_: i for i, id_ in enumerate(address_ids)}
 coin_id_map    = {id_: i for i, id_ in enumerate(coin_ids)}
@@ -36,86 +39,56 @@ tx_id_map      = {id_: i for i, id_ in enumerate(tx_ids)}
 # 3. 初始化 HeteroData
 data = HeteroData()
 
-# 4. 构建节点特征矩阵
-# 去掉 ID 列，只保留数值特征
-addr_features = addr_feat_df.drop(columns=['addressID']).values.astype(float)
-coin_features = coin_feat_df.drop(columns=['coinID']).values.astype(float)
-tx_features   = tx_feat_df.drop(columns=['txID']).values.astype(float)
+# 4. 构建节点特征矩阵（直接用 replace + values）
+data['address'].x = torch.tensor(
+    addr_feat_df.drop(columns=['addressID']).values, dtype=torch.float
+)
+data['coin'].x = torch.tensor(
+    coin_feat_df.drop(columns=['coinID']).values, dtype=torch.float
+)
+data['tx'].x = torch.tensor(
+    tx_feat_df.drop(columns=['txID']).values, dtype=torch.float
+)
+time2 = time.time()
+print(f"构建ID map and 节点特征矩阵时间: {time2 - time1}")
+print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
-# 转换为 torch.tensor，并对齐索引
-# 优化前
-address_x = torch.zeros((len(address_ids), addr_features.shape[1]))
-for _, row in addr_feat_df.iterrows():
-    idx = address_id_map[row['addressID']]
-    address_x[idx] = torch.tensor(row.drop(labels=['addressID']).values, dtype=torch.float)
+print("构建边关系")
+time1 = time.time()
+# 5. 建立边关系（向量化处理）
+def build_edge(df, src_col, dst_col, src_map, dst_map):
+    """通用边构造函数"""
+    src = df[src_col].map(src_map)
+    dst = df[dst_col].map(dst_map)
+    valid = src.notna() & dst.notna()
+    edge_index = np.column_stack([src[valid].astype(int).to_numpy(),
+                                  dst[valid].astype(int).to_numpy()]).T
+    return torch.from_numpy(edge_index).long()
 
-# # 优化后
-# # 1. 创建一个索引映射数组
-# addr_index_mapping = [address_id_map[addr_id] for addr_id in addr_feat_df['addressID']]
-# # 2. 直接转换整个特征矩阵
-# address_x = torch.tensor(addr_feat_df.drop(columns=['addressID']).values, dtype=torch.float)
-# # 3. 创建一个正确大小的结果张量
-# result = torch.zeros((len(address_ids), address_x.size(1)))
-# # 4. 使用索引映射一次性填充
-# result[addr_index_mapping] = address_x
+# 构建三类边
+data['address', 'addr_to_coin', 'coin'].edge_index = build_edge(edge_df, 'addressID', 'coinID',
+                                                                address_id_map, coin_id_map)
 
-# 对coin_x和tx_x也应用相同的优化
-coin_x = torch.zeros((len(coin_ids), coin_features.shape[1]))
-for _, row in coin_feat_df.iterrows():
-    idx = coin_id_map[row['coinID']]
-    coin_x[idx] = torch.tensor(row.drop(labels=['coinID']).values, dtype=torch.float)
+data['tx', 'tx_to_coin', 'coin'].edge_index = build_edge(edge_df, 'txID_coin', 'coinID',
+                                                         tx_id_map, coin_id_map)
 
-tx_x = torch.zeros((len(tx_ids), tx_features.shape[1]))
-for _, row in tx_feat_df.iterrows():
-    idx = tx_id_map[row['txID']]   # 注意这里改成 TxID
-    tx_x[idx] = torch.tensor(row.drop(labels=['txID']).values, dtype=torch.float)
-
-# 5. 挂到 HeteroData，节点类型改为 address、coin、tx
-data['address'].x = address_x
-data['coin'].x    = coin_x
-data['tx'].x      = tx_x
+data['coin', 'coin_to_tx', 'tx'].edge_index = build_edge(edge_df, 'coinID', 'coin_txID',
+                                                         coin_id_map, tx_id_map)
+time2 = time.time()
+print(f"构建边关系时间: {time2 - time1}")
+print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
 
-# 之前已经构建了 HeteroData 并载入了节点特征
-# 已有 address_id_map, coin_id_map, tx_id_map
-
-# 6. 建立边关系
-# addressID → coinID
-src_address = []
-dst_coin = []
-for _, row in edge_df.iterrows():
-    if row['addressID'] in address_id_map and row['coinID'] in coin_id_map:
-        src_address.append(address_id_map[row['addressID']])
-        dst_coin.append(coin_id_map[row['coinID']])
-data['address', 'addr_to_coin', 'coin'].edge_index = torch.tensor([src_address, dst_coin], dtype=torch.long)
-
-# txID_coin → coinID
-src_tx = []
-dst_coin2 = []
-for _, row in edge_df.iterrows():
-    if row['txID_coin'] in tx_id_map and row['coinID'] in coin_id_map:
-        src_tx.append(tx_id_map[row['txID_coin']])
-        dst_coin2.append(coin_id_map[row['coinID']])
-data['tx', 'tx_to_coin', 'coin'].edge_index = torch.tensor([src_tx, dst_coin2], dtype=torch.long)
-
-# coinID → coin_txID (注意 coin_txID 也是 TxID，需要用 tx_id_map)
-src_coin3 = []
-dst_tx = []
-for _, row in edge_df.iterrows():
-    if row['coinID'] in coin_id_map and row['coin_txID'] in tx_id_map:
-        src_coin3.append(coin_id_map[row['coinID']])
-        dst_tx.append(tx_id_map[row['coin_txID']])
-data['coin', 'coin_to_tx', 'tx'].edge_index = torch.tensor([src_coin3, dst_tx], dtype=torch.long)
-
-# 7. 给 address 节点加上 clusterID 标签（如果存在）
-# 初始化标签张量，默认 -1 表示无标签
+print("给 address 节点加标签")
+time1 = time.time()
+# 6. 给 address 节点加标签
 address_y = torch.full((len(address_id_map),), -1, dtype=torch.long)
-for _, row in edge_df.iterrows():
-    if row['addressID'] in address_id_map and not pd.isna(row['clusterID']):
-        idx = address_id_map[row['addressID']]
-        address_y[idx] = int(row['clusterID'])
+valid_cluster = edge_df[['addressID', 'clusterID']].dropna()
+for addr, cluster in zip(valid_cluster['addressID'], valid_cluster['clusterID']):
+    if addr in address_id_map:
+        address_y[address_id_map[addr]] = int(cluster)
 data['address'].y = address_y
 
 time2 = time.time()
-print("construct HeteroData time: ", time2 - time1)
+print("给 address 节点加标签时间: ", time2 - time1)
 print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
