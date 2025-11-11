@@ -1,11 +1,12 @@
-class c():
-    def __init__(self):
-        self.a=1
-    def seta(self):
-        self.seta5()
-    def seta5(self,v=5):
-        self.a=v
-c=c()
-print(c.a)
-c.seta()
-print(c.a)
+class c:
+	_a=None
+	def seta(self):
+		self._a=123
+
+def t():
+	c1=c()
+	c1.seta()
+	print(c1._a)
+# t()
+	
+	

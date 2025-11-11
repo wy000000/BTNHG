@@ -9,6 +9,7 @@ import numpy as np
 from torch_geometric.loader import DataLoader, NeighborLoader
 from torch_geometric.data import Dataset
 from sklearn.model_selection import train_test_split
+# import sys
 time2 = time.time()
 print("import time: ", time2 - time1)
 print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
@@ -17,8 +18,8 @@ print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 class paramsClass():
 	dataPath=r"D:\BTNHG\BTNHGV2"
 	train_size=0.8
-	产生一个随机数
-	random_sate=np.random.randint(0, int.maxsize)
+	#产生一个随机数，范围设置为[0, int.maxsize)
+	random_sate=np.random.randint(0, np.iinfo(np.int32).max)
 	# random_state=42
 	shuffle=True
 
@@ -28,7 +29,7 @@ class BTNHGDatasetClass(Dataset):
 	"""
 	def __init__(self):
 		super().__init__()
-		self.data=None
+		self._heteroData=None
 
 	def _loadBTNHGV2Data(self):
 		print("start construct HeteroData")
@@ -57,16 +58,16 @@ class BTNHGDatasetClass(Dataset):
 		tx_id_map      = {id_: i for i, id_ in enumerate(tx_ids)}
 
 		# 3. 初始化 HeteroData
-		self.data = HeteroData()
+		self._heteroData = HeteroData()
 
 		# 4. 构建节点特征矩阵（直接用 replace + values）
-		self.data['address'].x = torch.tensor(
+		self._heteroData['address'].x = torch.tensor(
 			addr_feat_df.drop(columns=['addressID']).values, dtype=torch.float
 		)
-		self.data['coin'].x = torch.tensor(
+		self._heteroData['coin'].x = torch.tensor(
 			coin_feat_df.drop(columns=['coinID']).values, dtype=torch.float
 		)
-		self.data['tx'].x = torch.tensor(
+		self._heteroData['tx'].x = torch.tensor(
 			tx_feat_df.drop(columns=['txID']).values, dtype=torch.float
 		)
 		time2 = time.time()
@@ -86,13 +87,13 @@ class BTNHGDatasetClass(Dataset):
 			return torch.from_numpy(edge_index).long()
 
 		# 构建边
-		self.data['address', 'addr_to_coin', 'coin'].edge_index = build_edge(edge_df, 'addressID', 'coinID',
+		self._heteroData['address', 'addr_to_coin', 'coin'].edge_index = build_edge(edge_df, 'addressID', 'coinID',
 																		address_id_map, coin_id_map)
 
-		self.data['tx', 'tx_to_coin', 'coin'].edge_index = build_edge(edge_df, 'txID_coin', 'coinID',
+		self._heteroData['tx', 'tx_to_coin', 'coin'].edge_index = build_edge(edge_df, 'txID_coin', 'coinID',
 																tx_id_map, coin_id_map)
 
-		self.data['coin', 'coin_to_tx', 'tx'].edge_index = build_edge(edge_df, 'coinID', 'coin_txID',
+		self._heteroData['coin', 'coin_to_tx', 'tx'].edge_index = build_edge(edge_df, 'coinID', 'coin_txID',
 																coin_id_map, tx_id_map)
 		time2 = time.time()
 		print(f"构建边关系时间: {time2 - time1}")
@@ -113,62 +114,63 @@ class BTNHGDatasetClass(Dataset):
 			# 这里仍然使用int()转换，但通过列表推导式更高效
 			clusters = [int(c) for c in valid_data['clusterID']]
 			address_y[indices] = torch.tensor(clusters, dtype=torch.long)
-		self.data['address'].y = address_y
+		self._heteroData['address'].y = address_y
 
 		time2 = time.time()
 		print("给 address 节点加标签时间: ", time2 - time1)
-		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
+		
 		#输出self.data的所有类型的结点及其特征矩阵的形状
-		print("address node types:", self.data.node_types)
-		print("address:"+str(self.data['address'].x.shape))
-		print("coin:"+str(self.data['coin'].x.shape))
-		print("tx:"+str(self.data['tx'].x.shape))
+		print("address node types:", self._heteroData.node_types)
+		print("address:"+str(self._heteroData['address'].x.shape))
+		print("coin:"+str(self._heteroData['coin'].x.shape))
+		print("tx:"+str(self._heteroData['tx'].x.shape))
 		# 输出self.data的所有类型的边及其边索引的形状
-		print("edge types:", self.data.edge_types)
-		print("address-coin:"+str(self.data['address', 'addr_to_coin', 'coin'].edge_index.shape))
-		print("tx-coin:"+str(self.data['tx', 'tx_to_coin', 'coin'].edge_index.shape))
-		print("coin-tx:"+str(self.data['coin', 'coin_to_tx', 'tx'].edge_index.shape))
-		#输出self.data.y的形状
-		print("address y shape:", self.data['address'].y.shape)
-		#输出self.data.y不是null的元素数
-		print("address y elements:", self.data['address'].y.numel())
+		print("edge types:", self._heteroData.edge_types)
+		print("address-coin:"+str(self._heteroData['address', 'addr_to_coin', 'coin'].edge_index.shape))
+		print("tx-coin:"+str(self._heteroData['tx', 'tx_to_coin', 'coin'].edge_index.shape))
+		print("coin-tx:"+str(self._heteroData['coin', 'coin_to_tx', 'tx'].edge_index.shape))
+		#输出self._heteroData.y的形状
+		print("address y shape:", self._heteroData['address'].y.shape)
+		#输出self._heteroData.y不是null的元素数
+		print("address y elements:", self._heteroData['address'].y.numel())
+		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 		
 	def _split_dataset(self):
 		"""划分数据集为训练集和测试集"""
 		print("start split dataset to train and test")
 		time1 = time.time()
-		labeled_address_indices = torch.where(self.data['address'].y != -1)[0]
-		num_labeled = len(labeled_address_indices)
+		labeled_address_indices = torch.where(self._heteroData['address'].y != -1)[0]
+		self._heteroData.num_labeled = len(labeled_address_indices)
 
-		if num_labeled == 0:
+		if self._heteroData.num_labeled == 0:
 			return None, None
 
-		labels = self.data['address'].y[labeled_address_indices].numpy()
+		labels = self._heteroData['address'].y[labeled_address_indices].numpy()
 
 		train_indices, test_indices = train_test_split(
-			np.arange(num_labeled),
-			train_size=self.train_size,
+			np.arange(self._heteroData.num_labeled),
+			train_size=paramsClass.train_size,
 			stratify=labels,
-			random_state=self.random_state)
+			random_state=paramsClass.random_sate)
 
-		train_mask = torch.zeros(self.data['address'].num_nodes, dtype=torch.bool)
-		test_mask = torch.zeros(self.data['address'].num_nodes, dtype=torch.bool)
+		train_mask = torch.zeros(self._heteroData['address'].num_nodes, dtype=torch.bool)
+		test_mask = torch.zeros(self._heteroData['address'].num_nodes, dtype=torch.bool)
 
 		train_mask[labeled_address_indices[train_indices]] = True
 		test_mask[labeled_address_indices[test_indices]] = True
 
 		# 直接在原始 data 上添加掩码
-		self.data['address'].train_mask = train_mask
-		self.data['address'].test_mask = test_mask		
+		self._heteroData['address'].train_mask = train_mask
+		self._heteroData['address'].test_mask = test_mask
 		time2 = time.time()
 		# 3. 打印划分信息
 		print("划分数据集信息")
-		print(f"训练集大小: {len(train_indices)} ({len(train_indices)/num_labeled:.2%})")
-		print(f"测试集大小: {len(test_indices)} ({len(test_indices)/num_labeled:.2%})")
+		print(f"训练集大小: {len(train_indices)} ({len(train_indices)/self._heteroData.num_labeled:.2%})")
+		print(f"测试集大小: {len(test_indices)} ({len(test_indices)/self._heteroData.num_labeled:.2%})")
 		print(f"划分数据集时间: {time2 - time1}")
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 	
-	def get_dataLoader(self):
+	def get_heteroData(self):
 		"""获取训练集DataLoader"""
 		# 1. 加载数据
 		self._loadBTNHGV2Data()
@@ -176,38 +178,74 @@ class BTNHGDatasetClass(Dataset):
 		self._split_dataset()
 		# 3. 返回划分好的数据集
 		print("返回划分好的数据集")
-		return self.data
+		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
+		return self._heteroData
 
-# 创建数据集实例
-dataset = BTNHGDatasetClass()
-dataLoader=dataset.get_dataLoader()
+#测试分布
+class TestHeteroDataClass:
+	def test_heteroData(self, heteroData):
+		# 创建数据集实例
+		# dataset = BTNHGDatasetClass()
+		# heteroData=dataset.get_heteroData()
 
-# 验证标签分布是否相同
-print("\n=== 训练集和测试集标签分布验证 ===")
-train_labels = dataLoader['address'].y[dataLoader['address'].train_mask]
-test_labels = dataLoader['address'].y[dataLoader['address'].test_mask]
+		# 验证标签分布是否相同
+		print("\n=== 训练集和测试集标签分布验证 ===")
 
-# 计算训练集标签分布
-train_label_counts = torch.bincount(train_labels[train_labels != -1])
-train_label_dist = train_label_counts.float() / train_label_counts.sum()
-
-# 计算测试集标签分布
-test_label_counts = torch.bincount(test_labels[test_labels != -1])
-test_label_dist = test_label_counts.float() / test_label_counts.sum()
-
-print(f"训练集大小: {len(train_labels[train_labels != -1])} ({len(train_labels[train_labels != -1])/dataset.num_labeled:.2%})")
-print(f"测试集大小: {len(test_labels[test_labels != -1])} ({len(test_labels[test_labels != -1])/dataset.num_labeled:.2%})")
-print("\n训练集标签分布:")
-for i, count in enumerate(train_label_counts):
-	if count > 0:
-		print(f"标签 {i}: {count} 个 ({train_label_dist[i]:.2%})")
-
-print("\n测试集标签分布:")
-for i, count in enumerate(test_label_counts):
-	if count > 0:
-		print(f"标签 {i}: {count} 个 ({test_label_dist[i]:.2%})")
-
-# 保存划分好的数据（可选）
-# torch.save(train_data, 'train_data.pt')
-# torch.save(test_data, 'test_data.pt')
+		# 计算训练集和测试集标签
+		mask_train = heteroData['address'].train_mask
+		mask_test = heteroData['address'].test_mask
+		
+		# 过滤掉无效标签(-1)并计算有效标签的掩码
+		valid_train_mask = mask_train & (heteroData['address'].y != -1)
+		valid_test_mask = mask_test & (heteroData['address'].y != -1)
+		
+		# 获取有效标签
+		valid_train_labels = heteroData['address'].y[valid_train_mask]
+		valid_test_labels = heteroData['address'].y[valid_test_mask]
+		
+		# 计算训练集标签分布
+		if valid_train_labels.numel() > 0:
+			train_label_counts = torch.bincount(valid_train_labels)
+			train_label_dist = train_label_counts.float() / train_label_counts.sum()
+			
+			# 获取有正样本的标签索引
+			positive_indices = torch.nonzero(train_label_counts, as_tuple=True)[0]
+			positive_counts = train_label_counts[positive_indices]
+			positive_dists = train_label_dist[positive_indices]
+		
+		# 计算测试集标签分布
+		if valid_test_labels.numel() > 0:
+			test_label_counts = torch.bincount(valid_test_labels)
+			test_label_dist = test_label_counts.float() / test_label_counts.sum()
+			
+			# 获取有正样本的标签索引
+			test_positive_indices = torch.nonzero(test_label_counts, as_tuple=True)[0]
+			test_positive_counts = test_label_counts[test_positive_indices]
+			test_positive_dists = test_label_dist[test_positive_indices]
+		
+		# 打印统计信息
+		print(f"训练集大小: {len(valid_train_labels)} ({len(valid_train_labels)/heteroData.num_labeled:.2%})")
+		print(f"测试集大小: {len(valid_test_labels)} ({len(valid_test_labels)/heteroData.num_labeled:.2%})")
+		
+		# 打印训练集标签分布
+		print("\n训练集标签分布:")
+		if valid_train_labels.numel() > 0:
+			# 使用向量化操作生成格式化字符串
+			train_lines = [f"标签 {idx}: {count} 个 ({dist:.2%})" 
+						for idx, count, dist in zip(positive_indices.tolist(), 
+													positive_counts.tolist(), 
+													positive_dists.tolist())]
+			print('\n'.join(train_lines))
+		
+		# 打印测试集标签分布
+		print("\n测试集标签分布:")
+		if valid_test_labels.numel() > 0:
+			# 使用向量化操作生成格式化字符串
+			test_lines = [f"标签 {idx}: {count} 个 ({dist:.2%})" 
+						for idx, count, dist in zip(test_positive_indices.tolist(), 
+													test_positive_counts.tolist(), 
+													test_positive_dists.tolist())]
+			print('\n'.join(test_lines))
+		#print now time
+		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
