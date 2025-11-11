@@ -17,33 +17,30 @@ print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 class paramsClass():
 	dataPath=r"D:\BTNHG\BTNHGV2"
 	train_size=0.8
-	random_state=42
+	产生一个随机数
+	random_sate=np.random.randint(0, int.maxsize)
+	# random_state=42
+	shuffle=True
 
-class BTNHGDataset(Dataset):
+class BTNHGDatasetClass(Dataset):
 	"""
 	比特币交易网络数据集类，用于处理异构图数据的划分和加载
 	"""
-	def __init__(self, train_size=paramsClass.train_size,
-				 random_state=paramsClass.random_state,
-				 dataPath=paramsClass.dataPath):
+	def __init__(self):
 		super().__init__()
-		self.data=self._loadBTNHGV2Data(dataPath)
-		self.train_size = train_size
-		self.random_state = random_state        
-		# 初始化时就划分数据集，避免重复计算
-		self.train_data, self.test_data = self._split_dataset()
+		self.data=None
 
-	def _loadBTNHGV2Data(dataPath):
+	def _loadBTNHGV2Data(self):
 		print("start construct HeteroData")
 		time1 = time.time()
 
 		# 1. 读取数据
 		print("start read data")
 		time1 = time.time()
-		addr_feat_df = pd.read_csv(os.path.join(dataPath, "addressFeature.csv"))
-		coin_feat_df = pd.read_csv(os.path.join(dataPath, "coinFeature.csv"))
-		tx_feat_df   = pd.read_csv(os.path.join(dataPath, "TxFeature.csv"))
-		edge_df      = pd.read_csv(os.path.join(dataPath, "hgEdgeV2.csv"))
+		addr_feat_df = pd.read_csv(os.path.join(paramsClass.dataPath, "addressFeature.csv"))
+		coin_feat_df = pd.read_csv(os.path.join(paramsClass.dataPath, "coinFeature.csv"))
+		tx_feat_df   = pd.read_csv(os.path.join(paramsClass.dataPath, "TxFeature.csv"))
+		edge_df      = pd.read_csv(os.path.join(paramsClass.dataPath, "hgEdgeV2.csv"))
 		time2 = time.time()
 		print(f"读取数据时间: {time2 - time1}")
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
@@ -60,16 +57,16 @@ class BTNHGDataset(Dataset):
 		tx_id_map      = {id_: i for i, id_ in enumerate(tx_ids)}
 
 		# 3. 初始化 HeteroData
-		data = HeteroData()
+		self.data = HeteroData()
 
 		# 4. 构建节点特征矩阵（直接用 replace + values）
-		data['address'].x = torch.tensor(
+		self.data['address'].x = torch.tensor(
 			addr_feat_df.drop(columns=['addressID']).values, dtype=torch.float
 		)
-		data['coin'].x = torch.tensor(
+		self.data['coin'].x = torch.tensor(
 			coin_feat_df.drop(columns=['coinID']).values, dtype=torch.float
 		)
-		data['tx'].x = torch.tensor(
+		self.data['tx'].x = torch.tensor(
 			tx_feat_df.drop(columns=['txID']).values, dtype=torch.float
 		)
 		time2 = time.time()
@@ -89,13 +86,13 @@ class BTNHGDataset(Dataset):
 			return torch.from_numpy(edge_index).long()
 
 		# 构建边
-		data['address', 'addr_to_coin', 'coin'].edge_index = build_edge(edge_df, 'addressID', 'coinID',
+		self.data['address', 'addr_to_coin', 'coin'].edge_index = build_edge(edge_df, 'addressID', 'coinID',
 																		address_id_map, coin_id_map)
 
-		data['tx', 'tx_to_coin', 'coin'].edge_index = build_edge(edge_df, 'txID_coin', 'coinID',
+		self.data['tx', 'tx_to_coin', 'coin'].edge_index = build_edge(edge_df, 'txID_coin', 'coinID',
 																tx_id_map, coin_id_map)
 
-		data['coin', 'coin_to_tx', 'tx'].edge_index = build_edge(edge_df, 'coinID', 'coin_txID',
+		self.data['coin', 'coin_to_tx', 'tx'].edge_index = build_edge(edge_df, 'coinID', 'coin_txID',
 																coin_id_map, tx_id_map)
 		time2 = time.time()
 		print(f"构建边关系时间: {time2 - time1}")
@@ -116,150 +113,79 @@ class BTNHGDataset(Dataset):
 			# 这里仍然使用int()转换，但通过列表推导式更高效
 			clusters = [int(c) for c in valid_data['clusterID']]
 			address_y[indices] = torch.tensor(clusters, dtype=torch.long)
-		data['address'].y = address_y
+		self.data['address'].y = address_y
 
 		time2 = time.time()
 		print("给 address 节点加标签时间: ", time2 - time1)
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
-		#输出data的所有类型的结点及其特征矩阵的形状
-		print("address node types:", data.node_types)
-		print("address:"+str(data['address'].x.shape))
-		print("coin:"+str(data['coin'].x.shape))
-		print("tx:"+str(data['tx'].x.shape))
-		# 输出data的所有类型的边及其边索引的形状
-		print("edge types:", data.edge_types)
-		print("address-coin:"+str(data['address', 'addr_to_coin', 'coin'].edge_index.shape))
-		print("tx-coin:"+str(data['tx', 'tx_to_coin', 'coin'].edge_index.shape))
-		print("coin-tx:"+str(data['coin', 'coin_to_tx', 'tx'].edge_index.shape))
-		#输出data.y的形状
-		print("address y shape:", data['address'].y.shape)
-		#输出data.y不是null的元素数
-		print("address y elements:", data['address'].y.numel())
-
-		return data
+		#输出self.data的所有类型的结点及其特征矩阵的形状
+		print("address node types:", self.data.node_types)
+		print("address:"+str(self.data['address'].x.shape))
+		print("coin:"+str(self.data['coin'].x.shape))
+		print("tx:"+str(self.data['tx'].x.shape))
+		# 输出self.data的所有类型的边及其边索引的形状
+		print("edge types:", self.data.edge_types)
+		print("address-coin:"+str(self.data['address', 'addr_to_coin', 'coin'].edge_index.shape))
+		print("tx-coin:"+str(self.data['tx', 'tx_to_coin', 'coin'].edge_index.shape))
+		print("coin-tx:"+str(self.data['coin', 'coin_to_tx', 'tx'].edge_index.shape))
+		#输出self.data.y的形状
+		print("address y shape:", self.data['address'].y.shape)
+		#输出self.data.y不是null的元素数
+		print("address y elements:", self.data['address'].y.numel())
 		
 	def _split_dataset(self):
-		"""内部方法：划分数据集"""
-		# 获取有标签的address节点索引
+		"""划分数据集为训练集和测试集"""
+		print("start split dataset to train and test")
+		time1 = time.time()
 		labeled_address_indices = torch.where(self.data['address'].y != -1)[0]
 		num_labeled = len(labeled_address_indices)
-		
+
 		if num_labeled == 0:
-			return self.data.clone(), self.data.clone()
-			
-		# 获取有标签的address节点的标签
+			return None, None
+
 		labels = self.data['address'].y[labeled_address_indices].numpy()
-		
-		# 分层采样划分训练集和测试集
+
 		train_indices, test_indices = train_test_split(
 			np.arange(num_labeled),
 			train_size=self.train_size,
 			stratify=labels,
-			random_state=self.random_state
-		)
-		
-		# 创建掩码和数据分割（代码与原实现相同）
+			random_state=self.random_state)
+
 		train_mask = torch.zeros(self.data['address'].num_nodes, dtype=torch.bool)
 		test_mask = torch.zeros(self.data['address'].num_nodes, dtype=torch.bool)
-		
-		# 设置掩码
-		train_mask[self.labeled_address_indices[train_indices]] = True
-		test_mask[self.labeled_address_indices[test_indices]] = True
-		
-		# 克隆数据并应用掩码
-		train_data = self.data.clone()
-		test_data = self.data.clone()
-		
-		train_data['address'].train_mask = train_mask
-		train_data['address'].test_mask = torch.zeros_like(train_mask)
-		
-		test_data['address'].train_mask = torch.zeros_like(test_mask)
-		test_data['address'].test_mask = test_mask
-		
-		return train_data, test_data
+
+		train_mask[labeled_address_indices[train_indices]] = True
+		test_mask[labeled_address_indices[test_indices]] = True
+
+		# 直接在原始 data 上添加掩码
+		self.data['address'].train_mask = train_mask
+		self.data['address'].test_mask = test_mask		
+		time2 = time.time()
+		# 3. 打印划分信息
+		print("划分数据集信息")
+		print(f"训练集大小: {len(train_indices)} ({len(train_indices)/num_labeled:.2%})")
+		print(f"测试集大小: {len(test_indices)} ({len(test_indices)/num_labeled:.2%})")
+		print(f"划分数据集时间: {time2 - time1}")
+		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 	
-	def get_train_loader(self, batch_size=8, shuffle=True):
+	def get_dataLoader(self):
 		"""获取训练集DataLoader"""
-		return DataLoader(
-			[self.train_data],
-			batch_size=batch_size,
-			shuffle=shuffle,
-			follow_batch=['address', 'tx', 'coin']
-		)
-	
-	def get_test_loader(self, batch_size=8):
-		"""获取测试集DataLoader"""
-		return DataLoader(
-			[self.test_data],
-			batch_size=batch_size,
-			shuffle=False,
-			follow_batch=['address', 'tx', 'coin']
-		)
-	
-	# 保留原有的len()和get()方法
-	def len(self):
-		# 整个图作为一个数据实例
-		return 1
-	
-	def get(self, idx):
+		# 1. 加载数据
+		self._loadBTNHGV2Data()
+		# 2. 划分数据集
+		self._split_dataset()
+		# 3. 返回划分好的数据集
+		print("返回划分好的数据集")
 		return self.data
 
 # 创建数据集实例
-dataset = BTNHGDataset(data)
-
-# 划分训练集和测试集
-train_data, test_data = dataset.split_dataset(train_size=0.8)
-
-# 创建DataLoader
-train_loader = DataLoader(
-	[train_data],  # PyG的DataLoader期望数据列表
-	batch_size=8,
-	shuffle=True,
-	follow_batch=['address', 'tx', 'coin']  # 指定需要跟踪批次的节点类型
-)
-
-test_loader = DataLoader(
-	[test_data],
-	batch_size=8,
-	shuffle=False,  # 测试集通常不打乱
-	follow_batch=['address', 'tx', 'coin']
-)
-
-# 对于大图的替代方案：使用NeighborLoader进行邻居采样
-def create_neighbor_loaders(train_data, test_data, batch_size=8, shuffle=True, num_neighbors=[10, 5]):
-	"""
-	使用NeighborLoader创建训练集和测试集的数据加载器（适用于大图）
-	"""
-	# 获取训练集中有标签的address节点索引
-	train_nodes = torch.where(train_data['address'].train_mask)[0]
-	test_nodes = torch.where(test_data['address'].test_mask)[0]
-	
-	# 创建NeighborLoader
-	train_loader = NeighborLoader(
-		train_data,
-		num_neighbors=num_neighbors,  # 每层采样的邻居数量
-		batch_size=batch_size,
-		input_nodes=('address', train_nodes),  # 从address节点开始采样
-		shuffle=shuffle,
-	)
-	
-	test_loader = NeighborLoader(
-		test_data,
-		num_neighbors=num_neighbors,
-		batch_size=batch_size,
-		input_nodes=('address', test_nodes),
-		shuffle=False,
-	)
-	
-	return train_loader, test_loader
-
-# 如果图很大，可以使用下面的代码替换上面的DataLoader创建：
-# train_loader, test_loader = create_neighbor_loaders(train_data, test_data, batch_size=8, shuffle=True)
+dataset = BTNHGDatasetClass()
+dataLoader=dataset.get_dataLoader()
 
 # 验证标签分布是否相同
 print("\n=== 训练集和测试集标签分布验证 ===")
-train_labels = train_data['address'].y[train_data['address'].train_mask]
-test_labels = test_data['address'].y[test_data['address'].test_mask]
+train_labels = dataLoader['address'].y[dataLoader['address'].train_mask]
+test_labels = dataLoader['address'].y[dataLoader['address'].test_mask]
 
 # 计算训练集标签分布
 train_label_counts = torch.bincount(train_labels[train_labels != -1])
