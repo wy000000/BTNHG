@@ -135,7 +135,7 @@ class BTNHGDatasetClass(Dataset):
 		print("address y elements:", self._heteroData['address'].y.numel())
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 		
-	def _split_dataset(self):
+	def _split_dataset(self, randSeed=paramsClass.random_sate):
 		"""划分数据集为训练集和测试集"""
 		print("start split dataset to train and test")
 		time1 = time.time()
@@ -151,7 +151,7 @@ class BTNHGDatasetClass(Dataset):
 			np.arange(self._heteroData.num_labeled),
 			train_size=paramsClass.train_size,
 			stratify=labels,
-			random_state=paramsClass.random_sate)
+			random_state=randSeed)
 
 		train_mask = torch.zeros(self._heteroData['address'].num_nodes, dtype=torch.bool)
 		test_mask = torch.zeros(self._heteroData['address'].num_nodes, dtype=torch.bool)
@@ -181,6 +181,8 @@ class BTNHGDatasetClass(Dataset):
 		print("返回划分好的数据集")
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 		return self._heteroData
+	#生成trainLoader, testLoader
+	
 
 #测试分布
 class TestHeteroDataClass:
