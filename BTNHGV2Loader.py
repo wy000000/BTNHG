@@ -159,9 +159,9 @@ class BTNHGDatasetClass(Dataset):
 		train_mask[labeled_address_indices[train_indices]] = True
 		test_mask[labeled_address_indices[test_indices]] = True
 
-		# 直接在原始 data 上添加掩码
-		self._heteroData['address'].train_mask = train_mask
-		self._heteroData['address'].test_mask = test_mask
+		# # 直接在原始 data 上添加掩码
+		# self._heteroData['address'].train_mask = train_mask
+		# self._heteroData['address'].test_mask = test_mask
 		time2 = time.time()
 		# 3. 打印划分信息
 		print("划分数据集信息")
@@ -169,13 +169,14 @@ class BTNHGDatasetClass(Dataset):
 		print(f"测试集大小: {len(test_indices)} ({len(test_indices)/self._heteroData.num_labeled:.2%})")
 		print(f"划分数据集时间: {time2 - time1}")
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
+		return train_mask, test_mask
 	
 	def get_heteroData(self):
 		"""获取训练集DataLoader"""
 		# 1. 加载数据
 		self._loadBTNHGV2Data()
 		# 2. 划分数据集
-		self._split_dataset()
+		# self._split_dataset()
 		# 3. 返回划分好的数据集
 		print("返回划分好的数据集")
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
@@ -192,8 +193,10 @@ class TestHeteroDataClass:
 		print("\n=== 训练集和测试集标签分布验证 ===")
 
 		# 计算训练集和测试集标签
-		mask_train = heteroData['address'].train_mask
-		mask_test = heteroData['address'].test_mask
+		mask_train, mask_test = self._split_dataset()
+		# mask_train = heteroData['address'].train_mask
+		# mask_test = heteroData['address'].test_mask
+
 		
 		# 过滤掉无效标签(-1)并计算有效标签的掩码
 		valid_train_mask = mask_train & (heteroData['address'].y != -1)
