@@ -7,6 +7,6 @@ def t():
 	c1=c()
 	c1.seta()
 	print(c1._a)
-# t()
+t()
 	
 	

@@ -1,27 +1,38 @@
+# -*- coding: utf-8 -*-
+
 print("start import")
 import time
 time1 = time.time()
+import os
+import numpy as np
 import pandas as pd
 import torch
 from torch_geometric.data import HeteroData
-import os
-import numpy as np
+from torch.utils.data import TensorDataset
 from torch_geometric.loader import DataLoader, NeighborLoader
 from torch_geometric.data import Dataset
 from sklearn.model_selection import train_test_split
 # import sys
 time2 = time.time()
-print("import time: ", time2 - time1)
+print("import used time: ", time2 - time1)
 print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
 #定义一个参数类，使用静态变量来保存程序中用到的各种参数
 class paramsClass():
+	# 定义参数
 	dataPath=r"D:\BTNHG\BTNHGV2"
 	train_size=0.8
-	#产生一个随机数，范围设置为[0, int.maxsize)
-	random_sate=np.random.randint(0, np.iinfo(np.int32).max)
-	# random_state=42
 	shuffle=True
+	batch_size=8
+	randSeed=42
+
+	_rng = np.random.default_rng(randSeed)
+	# 生成随机数
+	@classmethod
+	def rand(cls, reset=False, seed=randSeed):
+		if reset:
+			cls._rng = np.random.default_rng(seed)
+		return cls._rng.integers(0, 4294967296)
 
 class BTNHGDatasetClass(Dataset):
 	"""
@@ -30,6 +41,8 @@ class BTNHGDatasetClass(Dataset):
 	def __init__(self):
 		super().__init__()
 		self._heteroData=None
+
+		self._loadBTNHGV2Data()
 
 	def _loadBTNHGV2Data(self):
 		print("start construct HeteroData")
@@ -43,7 +56,7 @@ class BTNHGDatasetClass(Dataset):
 		tx_feat_df   = pd.read_csv(os.path.join(paramsClass.dataPath, "TxFeature.csv"))
 		edge_df      = pd.read_csv(os.path.join(paramsClass.dataPath, "hgEdgeV2.csv"))
 		time2 = time.time()
-		print(f"读取数据时间: {time2 - time1}")
+		print(f"读取数据用时: {time2 - time1}")
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
 		# 2. 建立 ID 映射
@@ -71,7 +84,7 @@ class BTNHGDatasetClass(Dataset):
 			tx_feat_df.drop(columns=['txID']).values, dtype=torch.float
 		)
 		time2 = time.time()
-		print(f"构建ID map and 节点特征矩阵时间: {time2 - time1}")
+		print(f"构建ID map and 节点特征矩阵用时: {time2 - time1}")
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
 		# 5. 建立边关系（向量化处理）
@@ -96,7 +109,7 @@ class BTNHGDatasetClass(Dataset):
 		self._heteroData['coin', 'coin_to_tx', 'tx'].edge_index = build_edge(edge_df, 'coinID', 'coin_txID',
 																coin_id_map, tx_id_map)
 		time2 = time.time()
-		print(f"构建边关系时间: {time2 - time1}")
+		print(f"构建边关系用时: {time2 - time1}")
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
 		# 6. 给 address 节点加标签
@@ -117,7 +130,7 @@ class BTNHGDatasetClass(Dataset):
 		self._heteroData['address'].y = address_y
 
 		time2 = time.time()
-		print("给 address 节点加标签时间: ", time2 - time1)
+		print("给 address 节点加标签用时: ", time2 - time1)
 		
 		#输出self.data的所有类型的结点及其特征矩阵的形状
 		print("address node types:", self._heteroData.node_types)
@@ -134,9 +147,9 @@ class BTNHGDatasetClass(Dataset):
 		#输出self._heteroData.y不是null的元素数
 		print("address y elements:", self._heteroData['address'].y.numel())
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
-		
-	def _split_dataset(self, randSeed=paramsClass.random_sate):
-		"""划分数据集为训练集和测试集"""
+			
+	def getTrainLoaderAndTestLoader(self, batch_size=paramsClass.batch_size, isResetSeed=False):
+		"""划分数据集为训练集和测试集，并返回 DataLoader"""
 		print("start split dataset to train and test")
 		time1 = time.time()
 		labeled_address_indices = torch.where(self._heteroData['address'].y != -1)[0]
@@ -147,41 +160,184 @@ class BTNHGDatasetClass(Dataset):
 
 		labels = self._heteroData['address'].y[labeled_address_indices].numpy()
 
+		randSeed = paramsClass.rand(isResetSeed)
+		# if(isResetSeed):
+		# 	randSeed = paramsClass.rand(isResetSeed)
+		# 	np.random.seed(randSeed)
+		# 	torch.manual_seed(randSeed)
+		print("randSeed:", randSeed)
 		train_indices, test_indices = train_test_split(
 			np.arange(self._heteroData.num_labeled),
 			train_size=paramsClass.train_size,
 			stratify=labels,
-			random_state=randSeed)
+			random_state=randSeed
+		)
 
-		train_mask = torch.zeros(self._heteroData['address'].num_nodes, dtype=torch.bool)
-		test_mask = torch.zeros(self._heteroData['address'].num_nodes, dtype=torch.bool)
+		# 转换为真实节点索引
+		train_nodes = labeled_address_indices[train_indices]
+		test_nodes = labeled_address_indices[test_indices]
 
-		train_mask[labeled_address_indices[train_indices]] = True
-		test_mask[labeled_address_indices[test_indices]] = True
+		# 构造数据集 (假设特征是 x，标签是 y)
+		x = self._heteroData['address'].x
+		y = self._heteroData['address'].y
 
-		# # 直接在原始 data 上添加掩码
-		# self._heteroData['address'].train_mask = train_mask
-		# self._heteroData['address'].test_mask = test_mask
+		train_dataset = TensorDataset(x[train_nodes], y[train_nodes])
+		test_dataset = TensorDataset(x[test_nodes], y[test_nodes])
+
+		train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+		test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
 		time2 = time.time()
-		# 3. 打印划分信息
 		print("划分数据集信息")
 		print(f"训练集大小: {len(train_indices)} ({len(train_indices)/self._heteroData.num_labeled:.2%})")
 		print(f"测试集大小: {len(test_indices)} ({len(test_indices)/self._heteroData.num_labeled:.2%})")
-		print(f"划分数据集时间: {time2 - time1}")
+		print(f"划分数据集用时: {time2 - time1}")
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
-		return train_mask, test_mask
+
+		return train_loader, test_loader
 	
-	def get_heteroData(self):
-		"""获取训练集DataLoader"""
-		# 1. 加载数据
-		self._loadBTNHGV2Data()
-		# 2. 划分数据集
-		# self._split_dataset()
-		# 3. 返回划分好的数据集
-		print("返回划分好的数据集")
-		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
-		return self._heteroData
-	#生成trainLoader, testLoader
+	# def _split_dataset(self, isResetSeed=False):
+		# 	"""划分数据集为训练集和测试集"""
+		# 	print("start split dataset to train and test")
+		# 	time1 = time.time()
+		# 	labeled_address_indices = torch.where(self._heteroData['address'].y != -1)[0]
+		# 	self._heteroData.num_labeled = len(labeled_address_indices)
+
+		# 	if self._heteroData.num_labeled == 0:
+		# 		return None, None
+
+		# 	labels = self._heteroData['address'].y[labeled_address_indices].numpy()
+
+		# 	randSeed = paramsClass.rand(isResetSeed)
+		# 	train_indices, test_indices = train_test_split(
+		# 		np.arange(self._heteroData.num_labeled),
+		# 		train_size=paramsClass.train_size,
+		# 		stratify=labels,
+		# 		random_state=randSeed)
+
+		# 	train_mask = torch.zeros(self._heteroData['address'].num_nodes, dtype=torch.bool)
+		# 	test_mask = torch.zeros(self._heteroData['address'].num_nodes, dtype=torch.bool)
+
+		# 	train_mask[labeled_address_indices[train_indices]] = True
+		# 	test_mask[labeled_address_indices[test_indices]] = True
+
+		# 	time2 = time.time()
+		# 	# 3. 打印划分信息
+		# 	print("划分数据集信息")
+		# 	print(f"训练集大小: {len(train_indices)} ({len(train_indices)/self._heteroData.num_labeled:.2%})")
+		# 	print(f"测试集大小: {len(test_indices)} ({len(test_indices)/self._heteroData.num_labeled:.2%})")
+		# 	print(f"划分数据集用时: {time2 - time1}")
+		# 	print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
+		# 	return train_mask, test_mask
+# ##################################################
+# d=BTNHGDatasetClass()
+# d._loadBTNHGV2Data()
+# td11, td12 = d.getTrainLoaderAndTestLoader()
+# td21, td22 = d.getTrainLoaderAndTestLoader()
+# #比较td11.dataset和td21.dataset是否相同
+
+# # 导入必要的库
+
+# # 方法1：检查对象标识（内存地址）
+# print("对象标识是否相同（内存地址）:")
+# print("td11.dataset is td21.dataset:", td11.dataset is td21.dataset)  # 应该是False，因为是不同实例
+
+# # 方法2：检查数据集大小
+# print("\n数据集大小是否相同:")
+# print("数据集长度比较:", len(td11.dataset) == len(td21.dataset))
+
+# # 方法3：比较数据集的张量内容
+# print("\n数据集张量内容是否相同:")
+# if hasattr(td11.dataset, 'tensors') and hasattr(td21.dataset, 'tensors'):
+#     # 修复：使用len(td11.dataset.tensors)获取张量数量
+#     print(f"td11.dataset包含{len(td11.dataset.tensors)}个张量")
+#     print(f"td21.dataset包含{len(td21.dataset.tensors)}个张量")
+    
+#     # 比较每个张量是否相等
+#     all_tensors_equal = True
+#     for i, (t1, t2) in enumerate(zip(td11.dataset.tensors, td21.dataset.tensors)):
+#         is_equal = torch.equal(t1, t2)
+#         print(f"张量{i+1}相等: {is_equal}")
+#         if not is_equal:
+#             all_tensors_equal = False
+#             break
+    
+#     print("所有张量内容相同:", all_tensors_equal)
+# else:
+#     print("无法访问tensors属性")
+
+# # 方法4：检查前几个样本是否相同（如果数据集不为空）
+# print("\n前3个样本是否相同:")
+# if len(td11.dataset) > 0 and len(td21.dataset) > 0:
+#     sample_count = min(3, len(td11.dataset), len(td21.dataset))
+#     for i in range(sample_count):
+#         sample1 = td11.dataset[i]
+#         sample2 = td21.dataset[i]
+        
+#         if isinstance(sample1, tuple) and isinstance(sample2, tuple):
+#             # 如果样本是元组(x,y)，分别比较
+#             x_equal = torch.equal(sample1[0], sample2[0])
+#             y_equal = torch.equal(sample1[1], sample2[1])
+#             print(f"样本{i+1}特征相等: {x_equal}, 标签相等: {y_equal}")
+#         else:
+#             # 如果样本不是元组，直接比较
+#             equal = torch.equal(sample1, sample2)
+#             print(f"样本{i+1}相等: {equal}")
+# else:
+#     print("数据集为空，无法比较样本")
+
+# # 方法5：检查训练数据索引是否相同（基于之前的分析）
+# # 从文件内容看，数据集是通过索引创建的，所以可以检查索引是否一致
+# print("\n数据集内容总结:")
+# print(f"td11.dataset类型: {type(td11.dataset).__name__}")
+# print(f"td21.dataset类型: {type(td21.dataset).__name__}")
+# print(f"数据集大小相同: {len(td11.dataset) == len(td21.dataset)}")
+
+
+
+
+
+#输出当前时间
+print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
+
+############################################
+
+	# def get_data_loaders(self, batch_size=paramsClass.batch_size, randSeed=None):
+	# 	"""返回 train_loader 和 test_loader"""
+	# 	train_mask, test_mask = self._split_dataset(randSeed=randSeed)
+
+	# 	if train_mask is None or test_mask is None:
+	# 		return None, None
+
+	# 	# 根据 mask 获取索引
+	# 	train_indices = train_mask.nonzero(as_tuple=True)[0]
+	# 	test_indices = test_mask.nonzero(as_tuple=True)[0]
+
+	# 	# 构造子数据集
+	# 	train_dataset = self._heteroData['address'].index_select(train_indices)
+	# 	test_dataset = self._heteroData['address'].index_select(test_indices)
+
+	# 	# 构造 DataLoader
+	# 	train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=paramsClass.shuffle)
+	# 	test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+	# 	# train_loader.train_mask = train_mask
+	# 	# test_loader.test_mask = test_mask
+		
+	# 	return train_loader, test_loader
+
+	# def get_heteroData(self):
+	# 	"""获取训练集DataLoader"""
+	# 	# 1. 加载数据
+	# 	self._loadBTNHGV2Data()
+	# 	# 2. 划分数据集
+	# 	# self._split_dataset()
+	# 	# 3. 返回划分好的数据集
+	# 	print("返回划分好的数据集")
+	# 	print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
+	# 	return self._heteroData
+	# #生成trainLoader, testLoader
+
+	#生成一个函数返回trainLoader, testLoader
 	
 
 #测试分布
@@ -253,4 +409,3 @@ class TestHeteroDataClass:
 			print('\n'.join(test_lines))
 		#print now time
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
-
