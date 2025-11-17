@@ -1,0 +1,19 @@
+import numpy as np
+
+#定义一个参数类，使用静态变量来保存程序中用到的各种参数
+class paramsClass():
+	# 定义参数
+	dataPath=r"D:\BTNHG\BTNHGV2"
+	train_size=0.8
+	shuffle=True
+	batch_size=8
+	randSeed=42
+
+	_rng = np.random.default_rng(randSeed)
+	# 生成随机数
+	@classmethod
+	def rand(cls, reset=False, seed=randSeed):
+		if reset:
+			cls._rng = np.random.default_rng(seed)
+		return cls._rng.integers(0, 4294967296)
+
