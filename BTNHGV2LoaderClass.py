@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-print("start import")
+# print("start import")
 import time
 time1 = time.time()
 import os
@@ -13,26 +13,28 @@ from torch_geometric.loader import DataLoader, NeighborLoader
 from torch_geometric.data import Dataset
 from sklearn.model_selection import train_test_split
 from sklearn.utils import check_random_state
-from BTNHGV2HeteroDataClass import HeteroDataClass
-from BTNHGV2ParameterClass import paramsClass
+from BTNHGV2HeteroDataClass import BTNHGV2HeteroDataClass
+from BTNHGV2ParameterClass import BTNHGV2ParameterClass
 # import sys
 time2 = time.time()
-print("import used time: ", time2 - time1)
-print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
+# print("import used time: ", time2 - time1)
+# print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
-class loaderClass:
-	def __init__(self, heteroData=None,
-			  	train_size=paramsClass.train_size,
-				batch_size=paramsClass.batch_size,
-				shuffle=paramsClass.shuffle, isResetSeed=False):
+class BTNHGV2LoaderClass:
+	def __init__(self, heteroData=None):
 		if heteroData is None:
 			return None
-		self._heteroData=heteroData			
+		self._heteroData=heteroData
+		# self._train_size=train_size
+		# self._batch_size=batch_size
+		# self._shuffle=shuffle
+		# self._isResetSeed=isResetSeed
 			
-	def getTrainLoaderAndTestLoader(self, train_size=paramsClass.train_size,
-								batch_size=paramsClass.batch_size,
-								shuffle=paramsClass.shuffle, isResetSeed=False):
+	def getTrainLoaderAndTestLoader(self, train_size=BTNHGV2ParameterClass.train_size,
+								batch_size=BTNHGV2ParameterClass.batch_size,
+								shuffle=BTNHGV2ParameterClass.shuffle, isResetSeed=False):
 		"""划分数据集为训练集和测试集，并返回 DataLoader"""
+		# print("flag")
 		print("start split dataset to train and test")
 		time1 = time.time()
 		labeled_address_indices = torch.where(self._heteroData['address'].y != -1)[0]
@@ -43,14 +45,15 @@ class loaderClass:
 
 		labels = self._heteroData['address'].y[labeled_address_indices].numpy()
 
-		randSeed = paramsClass.rand(isResetSeed)
+		randSeed = BTNHGV2ParameterClass.rand(isResetSeed)
 		print(f"randSeed:{randSeed}, type:{type(randSeed)}")
-		if(isResetSeed):
-			random.seed(randSeed)
-			np.random.seed(randSeed)
-			torch.manual_seed(randSeed)
+		# if(isResetSeed):
+		# 	random.seed(randSeed)
+		# 	np.random.seed(randSeed)
+		# 	torch.manual_seed(randSeed)
+		# 	if torch.cuda.is_available():
+		# 		torch.cuda.manual_seed_all(randSeed)
 
-	
 		train_indices, test_indices = train_test_split(
 			np.arange(self._heteroData.num_labeled),
 			train_size=train_size,
@@ -150,6 +153,7 @@ class loaderClass:
 		
 		# return X[train_idx], X[test_idx], y[train_idx], y[test_idx]
 		return train_idx, test_idx
+	##################################################3
 	
 
 	# def _split_dataset(self, isResetSeed=False):
@@ -253,8 +257,7 @@ class loaderClass:
 
 
 
-#输出当前时间
-print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
+
 
 ############################################
 
