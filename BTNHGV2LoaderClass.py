@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-
 print("start import")
 import time
 time1 = time.time()
 import os
+import random
 import numpy as np
 import pandas as pd
 import torch
@@ -12,143 +12,26 @@ from torch.utils.data import TensorDataset
 from torch_geometric.loader import DataLoader, NeighborLoader
 from torch_geometric.data import Dataset
 from sklearn.model_selection import train_test_split
+from sklearn.utils import check_random_state
+from BTNHGV2HeteroDataClass import HeteroDataClass
+from BTNHGV2ParameterClass import paramsClass
 # import sys
 time2 = time.time()
 print("import used time: ", time2 - time1)
 print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
-#定义一个参数类，使用静态变量来保存程序中用到的各种参数
-class paramsClass():
-	# 定义参数
-	dataPath=r"D:\BTNHG\BTNHGV2"
-	train_size=0.8
-	shuffle=True
-	batch_size=8
-	randSeed=42
-
-	_rng = np.random.default_rng(randSeed)
-	# 生成随机数
-	@classmethod
-	def rand(cls, reset=False, seed=randSeed):
-		if reset:
-			cls._rng = np.random.default_rng(seed)
-		return cls._rng.integers(0, 4294967296)
-
-class BTNHGDatasetClass(Dataset):
-	"""
-	比特币交易网络数据集类，用于处理异构图数据的划分和加载
-	"""
-	def __init__(self):
-		super().__init__()
-		self._heteroData=None
-
-		self._loadBTNHGV2Data()
-
-	def _loadBTNHGV2Data(self):
-		print("start construct HeteroData")
-		time1 = time.time()
-
-		# 1. 读取数据
-		print("start read data")
-		time1 = time.time()
-		addr_feat_df = pd.read_csv(os.path.join(paramsClass.dataPath, "addressFeature.csv"))
-		coin_feat_df = pd.read_csv(os.path.join(paramsClass.dataPath, "coinFeature.csv"))
-		tx_feat_df   = pd.read_csv(os.path.join(paramsClass.dataPath, "TxFeature.csv"))
-		edge_df      = pd.read_csv(os.path.join(paramsClass.dataPath, "hgEdgeV2.csv"))
-		time2 = time.time()
-		print(f"读取数据用时: {time2 - time1}")
-		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
-
-		# 2. 建立 ID 映射
-		print("construct ID map and 构建节点特征矩阵")
-		time1 = time.time()
-		address_ids = addr_feat_df['addressID'].unique()
-		coin_ids    = coin_feat_df['coinID'].unique()
-		tx_ids      = tx_feat_df['txID'].unique()
-
-		address_id_map = {id_: i for i, id_ in enumerate(address_ids)}
-		coin_id_map    = {id_: i for i, id_ in enumerate(coin_ids)}
-		tx_id_map      = {id_: i for i, id_ in enumerate(tx_ids)}
-
-		# 3. 初始化 HeteroData
-		self._heteroData = HeteroData()
-
-		# 4. 构建节点特征矩阵（直接用 replace + values）
-		self._heteroData['address'].x = torch.tensor(
-			addr_feat_df.drop(columns=['addressID']).values, dtype=torch.float
-		)
-		self._heteroData['coin'].x = torch.tensor(
-			coin_feat_df.drop(columns=['coinID']).values, dtype=torch.float
-		)
-		self._heteroData['tx'].x = torch.tensor(
-			tx_feat_df.drop(columns=['txID']).values, dtype=torch.float
-		)
-		time2 = time.time()
-		print(f"构建ID map and 节点特征矩阵用时: {time2 - time1}")
-		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
-
-		# 5. 建立边关系（向量化处理）
-		print("构建边关系")
-		time1 = time.time()
-		def build_edge(df, src_col, dst_col, src_map, dst_map):
-			"""通用边构造函数"""
-			src = df[src_col].map(src_map)
-			dst = df[dst_col].map(dst_map)
-			valid = src.notna() & dst.notna()
-			edge_index = np.column_stack([src[valid].astype(int).to_numpy(),
-										dst[valid].astype(int).to_numpy()]).T
-			return torch.from_numpy(edge_index).long()
-
-		# 构建边
-		self._heteroData['address', 'addr_to_coin', 'coin'].edge_index = build_edge(edge_df, 'addressID', 'coinID',
-																		address_id_map, coin_id_map)
-
-		self._heteroData['tx', 'tx_to_coin', 'coin'].edge_index = build_edge(edge_df, 'txID_coin', 'coinID',
-																tx_id_map, coin_id_map)
-
-		self._heteroData['coin', 'coin_to_tx', 'tx'].edge_index = build_edge(edge_df, 'coinID', 'coin_txID',
-																coin_id_map, tx_id_map)
-		time2 = time.time()
-		print(f"构建边关系用时: {time2 - time1}")
-		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
-
-		# 6. 给 address 节点加标签
-		print("给 address 节点加标签")
-		time1 = time.time()
-		address_y = torch.full((len(address_id_map),), -1, dtype=torch.long)
-		# 使用向量化操作
-		valid_cluster = edge_df[['addressID', 'clusterID']].dropna()
-		# 过滤出有效的地址和聚类ID
-		valid_mask = valid_cluster['addressID'].isin(address_id_map.keys())
-		valid_data = valid_cluster[valid_mask]
-		# 批量转换和赋值
-		if not valid_data.empty:
-			indices = [address_id_map[addr] for addr in valid_data['addressID']]
-			# 这里仍然使用int()转换，但通过列表推导式更高效
-			clusters = [int(c) for c in valid_data['clusterID']]
-			address_y[indices] = torch.tensor(clusters, dtype=torch.long)
-		self._heteroData['address'].y = address_y
-
-		time2 = time.time()
-		print("给 address 节点加标签用时: ", time2 - time1)
-		
-		#输出self.data的所有类型的结点及其特征矩阵的形状
-		print("address node types:", self._heteroData.node_types)
-		print("address:"+str(self._heteroData['address'].x.shape))
-		print("coin:"+str(self._heteroData['coin'].x.shape))
-		print("tx:"+str(self._heteroData['tx'].x.shape))
-		# 输出self.data的所有类型的边及其边索引的形状
-		print("edge types:", self._heteroData.edge_types)
-		print("address-coin:"+str(self._heteroData['address', 'addr_to_coin', 'coin'].edge_index.shape))
-		print("tx-coin:"+str(self._heteroData['tx', 'tx_to_coin', 'coin'].edge_index.shape))
-		print("coin-tx:"+str(self._heteroData['coin', 'coin_to_tx', 'tx'].edge_index.shape))
-		#输出self._heteroData.y的形状
-		print("address y shape:", self._heteroData['address'].y.shape)
-		#输出self._heteroData.y不是null的元素数
-		print("address y elements:", self._heteroData['address'].y.numel())
-		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
+class loaderClass:
+	def __init__(self, heteroData=None,
+			  	train_size=paramsClass.train_size,
+				batch_size=paramsClass.batch_size,
+				shuffle=paramsClass.shuffle, isResetSeed=False):
+		if heteroData is None:
+			return None
+		self._heteroData=heteroData			
 			
-	def getTrainLoaderAndTestLoader(self, batch_size=paramsClass.batch_size, isResetSeed=False):
+	def getTrainLoaderAndTestLoader(self, train_size=paramsClass.train_size,
+								batch_size=paramsClass.batch_size,
+								shuffle=paramsClass.shuffle, isResetSeed=False):
 		"""划分数据集为训练集和测试集，并返回 DataLoader"""
 		print("start split dataset to train and test")
 		time1 = time.time()
@@ -161,17 +44,30 @@ class BTNHGDatasetClass(Dataset):
 		labels = self._heteroData['address'].y[labeled_address_indices].numpy()
 
 		randSeed = paramsClass.rand(isResetSeed)
-		# if(isResetSeed):
-		# 	randSeed = paramsClass.rand(isResetSeed)
-		# 	np.random.seed(randSeed)
-		# 	torch.manual_seed(randSeed)
-		print("randSeed:", randSeed)
+		print(f"randSeed:{randSeed}, type:{type(randSeed)}")
+		if(isResetSeed):
+			random.seed(randSeed)
+			np.random.seed(randSeed)
+			torch.manual_seed(randSeed)
+
+	
 		train_indices, test_indices = train_test_split(
 			np.arange(self._heteroData.num_labeled),
-			train_size=paramsClass.train_size,
+			train_size=train_size,
 			stratify=labels,
 			random_state=randSeed
 		)
+		# if(isResetSeed):
+		# 	train_indices = np.sort(train_indices)
+		# 	test_indices = np.sort(test_indices)
+		
+		# train_indices, test_indices = _stratified_train_test_split(
+		# 	np.arange(self._heteroData.num_labeled), labels
+		# 	1-paramsClass.train_size,
+		# 	stratify=True,
+		# 	shuffle=paramsClass.shuffle,
+		# 	random_state=randSeed
+		# )
 
 		# 转换为真实节点索引
 		train_nodes = labeled_address_indices[train_indices]
@@ -184,7 +80,7 @@ class BTNHGDatasetClass(Dataset):
 		train_dataset = TensorDataset(x[train_nodes], y[train_nodes])
 		test_dataset = TensorDataset(x[test_nodes], y[test_nodes])
 
-		train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+		train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle)
 		test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
 		time2 = time.time()
@@ -195,7 +91,67 @@ class BTNHGDatasetClass(Dataset):
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
 		return train_loader, test_loader
+	###################################################################
+	def _stratified_train_test_split(X, y, test_size=0.25,
+									stratify=True, shuffle=True, random_state=None):
+		"""
+		自定义 train_test_split，支持 stratify 和 shuffle 同时控制。
+		
+		参数：
+		----------
+		X : array-like, shape (n_samples, n_features)
+			特征矩阵
+		y : array-like, shape (n_samples,)
+			标签
+		test_size : float
+			测试集比例
+		stratify : bool
+			是否分层抽样
+		shuffle : bool
+			是否打乱数据
+		random_state : int 或 None
+			随机种子
+		
+		返回：
+		----------
+		X_train, X_test, y_train, y_test
+		"""		
+		rng = check_random_state(random_state)
+		X = np.array(X)
+		y = np.array(y)
+		n_samples = len(y)
+		n_test = int(np.floor(test_size * n_samples))
+		
+		if stratify:
+			# 按类别分层
+			train_idx, test_idx = [], []
+			classes, y_indices = np.unique(y, return_inverse=True)
+			for cls in range(len(classes)):
+				cls_idx = np.where(y_indices == cls)[0]
+				n_cls_test = int(np.floor(test_size * len(cls_idx)))
+				cls_test_idx = rng.choice(cls_idx, size=n_cls_test, replace=False)
+				cls_train_idx = np.setdiff1d(cls_idx, cls_test_idx)
+				train_idx.extend(cls_train_idx)
+				test_idx.extend(cls_test_idx)
+		else:
+			# 不分层，直接随机划分
+			indices = np.arange(n_samples)
+			test_idx = rng.choice(indices, size=n_test, replace=False)
+			train_idx = np.setdiff1d(indices, test_idx)
+		
+		# 是否打乱
+		if shuffle:
+			rng.shuffle(train_idx)
+			rng.shuffle(test_idx)
+		# else:
+		# 	# 保持原始顺序
+		# 	train_idx = np.sort(train_idx)
+		# 	test_idx = np.sort(test_idx)
+		
+		# return X[train_idx], X[test_idx], y[train_idx], y[test_idx]
+		return train_idx, test_idx
 	
+
 	# def _split_dataset(self, isResetSeed=False):
 		# 	"""划分数据集为训练集和测试集"""
 		# 	print("start split dataset to train and test")
