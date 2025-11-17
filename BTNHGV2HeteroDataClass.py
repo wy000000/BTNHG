@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-print("start import")
+# print("start import")
 import time
 time1 = time.time()
 import os
@@ -14,15 +14,14 @@ from torch_geometric.loader import DataLoader, NeighborLoader
 from torch_geometric.data import Dataset
 from sklearn.model_selection import train_test_split
 from sklearn.utils import check_random_state
-from BTNHGV2ParameterClass import paramsClass
+from BTNHGV2ParameterClass import BTNHGV2ParameterClass
 # import sys
 time2 = time.time()
-print("import used time: ", time2 - time1)
-print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
+# print("import used time: ", time2 - time1)
+# print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
 
-
-class BTNHGHeteroDataClass(Dataset):
+class BTNHGV2HeteroDataClass(Dataset):
 	"""
 	比特币交易网络数据集类，用于处理异构图数据的划分和加载
 	"""
@@ -33,18 +32,22 @@ class BTNHGHeteroDataClass(Dataset):
 			self._heteroData=heteroData	
 		else:
 			self._loadBTNHGV2Data()
+		#添加一个属性，返回_heteroData
+	@property
+	def heteroData(self):
+		return self._heteroData
 
-	def _loadBTNHGV2Data(self):
+	def _loadBTNHGV2Data(self, dataPath=BTNHGV2ParameterClass.dataPath):
 		print("start construct HeteroData")
 		time1 = time.time()
 
 		# 1. 读取数据
 		print("start read data")
 		time1 = time.time()
-		addr_feat_df = pd.read_csv(os.path.join(paramsClass.dataPath, "addressFeature.csv"))
-		coin_feat_df = pd.read_csv(os.path.join(paramsClass.dataPath, "coinFeature.csv"))
-		tx_feat_df   = pd.read_csv(os.path.join(paramsClass.dataPath, "TxFeature.csv"))
-		edge_df      = pd.read_csv(os.path.join(paramsClass.dataPath, "hgEdgeV2.csv"))
+		addr_feat_df = pd.read_csv(os.path.join(dataPath, "addressFeature.csv"))
+		coin_feat_df = pd.read_csv(os.path.join(dataPath, "coinFeature.csv"))
+		tx_feat_df   = pd.read_csv(os.path.join(dataPath, "TxFeature.csv"))
+		edge_df      = pd.read_csv(os.path.join(dataPath, "hgEdgeV2.csv"))
 		time2 = time.time()
 		print(f"读取数据用时: {time2 - time1}")
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
@@ -137,4 +140,6 @@ class BTNHGHeteroDataClass(Dataset):
 		#输出self._heteroData.y不是null的元素数
 		print("address y elements:", self._heteroData['address'].y.numel())
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
-	####################################################
+
+
+

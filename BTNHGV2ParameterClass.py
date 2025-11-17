@@ -1,7 +1,7 @@
 import numpy as np
 
 #定义一个参数类，使用静态变量来保存程序中用到的各种参数
-class paramsClass():
+class BTNHGV2ParameterClass():
 	# 定义参数
 	dataPath=r"D:\BTNHG\BTNHGV2"
 	train_size=0.8
@@ -12,8 +12,8 @@ class paramsClass():
 	_rng = np.random.default_rng(randSeed)
 	# 生成随机数
 	@classmethod
-	def rand(cls, reset=False, seed=randSeed):
-		if reset:
+	def rand(cls, isReset=False, seed=randSeed):
+		if isReset:
 			cls._rng = np.random.default_rng(seed)
-		return cls._rng.integers(0, 4294967296)
+		return int(cls._rng.integers(0, 4294967296))
 
