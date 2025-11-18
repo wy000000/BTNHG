@@ -22,6 +22,11 @@ time2 = time.time()
 
 class BTNHGV2LoaderClass:
 	def __init__(self, heteroData=None):
+		"""
+		初始化 BTNHGV2LoaderClass 类
+		Args:
+			heteroData: 异构图数据对象
+		"""
 		if heteroData is None:
 			return None
 		self._heteroData=heteroData
@@ -33,7 +38,17 @@ class BTNHGV2LoaderClass:
 	def getTrainLoaderAndTestLoader(self, train_size=BTNHGV2ParameterClass.train_size,
 								batch_size=BTNHGV2ParameterClass.batch_size,
 								shuffle=BTNHGV2ParameterClass.shuffle, isResetSeed=False):
-		"""划分数据集为训练集和测试集，并返回 DataLoader"""
+		"""
+		划分数据集为训练集和测试集,并返回DataLoader类型的train_loader和test_loader
+		Args:
+			train_size: 训练集比例，默认值为 BTNHGV2ParameterClass.train_size
+			batch_size: 批次大小，默认值为 BTNHGV2ParameterClass.batch_size
+			shuffle: 是否打乱数据集，默认值为 BTNHGV2ParameterClass.shuffle
+			isResetSeed: 是否重置随机种子，默认值为 False
+		Returns:
+			train_loader: 训练数据加载器(DataLoader类型)
+			test_loader: 测试数据加载器(DataLoader类型)
+		"""
 		# print("flag")
 		print("start split dataset to train and test")
 		time1 = time.time()
