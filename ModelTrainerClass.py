@@ -19,13 +19,14 @@ class ModelTrainerClass:
 			weight_decay: 权重衰减
 			epochs: 最大训练轮数
 			patience: 早停容忍度 (多少个 epoch 没提升就停止)
+			loss_threshold: 损失阈值 (早停触发条件)
 		"""
 		# 检查 device 是否为 None
 		if device is None:
-			self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+			self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")			
 		else:
 			self.device = device
-		
+		print(f"using device: {self.device}")
 		self.model = model.to(self.device)
 		self.train_loader = train_loader
 		self.test_loader = test_loader
@@ -44,7 +45,13 @@ class ModelTrainerClass:
 		# self.counter = 0
 
 	def train_one_epoch(self):
-		"""训练一个 epoch"""
+		"""
+		使用self.model, self.train_loader, self.optimizer, self.device训练一个 epoch
+		Args:
+			None
+		Returns:
+			total_loss: 该 epoch 的平均损失
+		"""
 		self.model.train()
 		total_loss = 0
 		for batch in self.train_loader:
@@ -57,8 +64,10 @@ class ModelTrainerClass:
 			total_loss += loss.item()
 		return total_loss / len(self.train_loader)
 
-	def test(self, loader):
+	def test(self, loader=None):
 		"""在给定数据集上测试"""
+		if loader is None:
+			loader = self.test_loader
 		self.model.eval()
 		correct = 0
 		total = 0
@@ -87,8 +96,8 @@ class ModelTrainerClass:
 				# best_state = self.model.state_dict()
 				counter = 0
 			##############################################################
-			# train_acc = self.test(self.train_loader)
-			# test_acc = self.test(self.test_loader)
+			# train_acc = self.test(loader=self.train_loader)
+			# test_acc = self.test(loader=self.test_loader)
 			# print(f"Epoch {epoch:03d} | Loss: {loss:.4f} | Train Acc: {train_acc:.4f} | Test Acc: {test_acc:.4f}")
 			# # 早停逻辑：监控测试集准确率
 			# if test_acc > self.best_acc:
