@@ -16,4 +16,10 @@ class BTNHGV2ParameterClass():
 		if isReset:
 			cls._rng = np.random.default_rng(seed)
 		return int(cls._rng.integers(0, 4294967296))
+	
+	patience=4
+	lr=0.01
+	weight_decay=1e-4
+	epochs=100
+	loss_threshold=0.0001
 
