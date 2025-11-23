@@ -34,7 +34,7 @@ class BTNHGV2LoaderClass:
 		# self._batch_size=batch_size
 		# self._shuffle=shuffle
 		# self._isResetSeed=isResetSeed
-			
+	
 	def getTrainLoaderAndTestLoader(self, train_size=BTNHGV2ParameterClass.train_size,
 								batch_size=BTNHGV2ParameterClass.batch_size,
 								shuffle=BTNHGV2ParameterClass.shuffle, isResetSeed=False):
@@ -109,101 +109,109 @@ class BTNHGV2LoaderClass:
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
 		return train_loader, test_loader
-	###################################################################
-	def _stratified_train_test_split(X, y, test_size=0.25,
-									stratify=True, shuffle=True, random_state=None):
-		"""
-		自定义 train_test_split，支持 stratify 和 shuffle 同时控制。
-		
-		参数：
-		----------
-		X : array-like, shape (n_samples, n_features)
-			特征矩阵
-		y : array-like, shape (n_samples,)
-			标签
-		test_size : float
-			测试集比例
-		stratify : bool
-			是否分层抽样
-		shuffle : bool
-			是否打乱数据
-		random_state : int 或 None
-			随机种子
-		
-		返回：
-		----------
-		X_train, X_test, y_train, y_test
-		"""		
-		rng = check_random_state(random_state)
-		X = np.array(X)
-		y = np.array(y)
-		n_samples = len(y)
-		n_test = int(np.floor(test_size * n_samples))
-		
-		if stratify:
-			# 按类别分层
-			train_idx, test_idx = [], []
-			classes, y_indices = np.unique(y, return_inverse=True)
-			for cls in range(len(classes)):
-				cls_idx = np.where(y_indices == cls)[0]
-				n_cls_test = int(np.floor(test_size * len(cls_idx)))
-				cls_test_idx = rng.choice(cls_idx, size=n_cls_test, replace=False)
-				cls_train_idx = np.setdiff1d(cls_idx, cls_test_idx)
-				train_idx.extend(cls_train_idx)
-				test_idx.extend(cls_test_idx)
-		else:
-			# 不分层，直接随机划分
-			indices = np.arange(n_samples)
-			test_idx = rng.choice(indices, size=n_test, replace=False)
-			train_idx = np.setdiff1d(indices, test_idx)
-		
-		# 是否打乱
-		if shuffle:
-			rng.shuffle(train_idx)
-			rng.shuffle(test_idx)
-		# else:
-		# 	# 保持原始顺序
-		# 	train_idx = np.sort(train_idx)
-		# 	test_idx = np.sort(test_idx)
-		
-		# return X[train_idx], X[test_idx], y[train_idx], y[test_idx]
-		return train_idx, test_idx
-	##################################################3
 	
+###################################################################
+	# def getTrainTestMask(self, train_size=BTNHGV2ParameterClass.train_size,
+	# 						batch_size=BTNHGV2ParameterClass.batch_size,
+	# 						shuffle=BTNHGV2ParameterClass.shuffle,
+	# 						isResetSeed=False):
+			
+	# 		# print("start split dataset to train and test")
+	# 		time1 = time.time()
+	# 		labeled_address_indices = torch.where(self._heteroData['address'].y != -1)[0]
+	# 		num_labeled = len(labeled_address_indices)
 
-	# def _split_dataset(self, isResetSeed=False):
-		# 	"""划分数据集为训练集和测试集"""
-		# 	print("start split dataset to train and test")
-		# 	time1 = time.time()
-		# 	labeled_address_indices = torch.where(self._heteroData['address'].y != -1)[0]
-		# 	self._heteroData.num_labeled = len(labeled_address_indices)
+	# 		if num_labeled == 0:
+	# 			return None, None
 
-		# 	if self._heteroData.num_labeled == 0:
-		# 		return None, None
+	# 		labels = self._heteroData['address'].y[labeled_address_indices].numpy()
 
-		# 	labels = self._heteroData['address'].y[labeled_address_indices].numpy()
+	# 		randSeed = BTNHGV2ParameterClass.rand(isResetSeed)
 
-		# 	randSeed = paramsClass.rand(isResetSeed)
-		# 	train_indices, test_indices = train_test_split(
-		# 		np.arange(self._heteroData.num_labeled),
-		# 		train_size=paramsClass.train_size,
-		# 		stratify=labels,
-		# 		random_state=randSeed)
+	# 		train_indices, test_indices = train_test_split(
+	# 			np.arange(num_labeled),
+	# 			train_size=train_size,
+	# 			stratify=labels,
+	# 			random_state=randSeed)
 
-		# 	train_mask = torch.zeros(self._heteroData['address'].num_nodes, dtype=torch.bool)
-		# 	test_mask = torch.zeros(self._heteroData['address'].num_nodes, dtype=torch.bool)
+	# 		train_mask = torch.zeros(self._heteroData['address'].num_nodes, dtype=torch.bool)
+	# 		test_mask = torch.zeros(self._heteroData['address'].num_nodes, dtype=torch.bool)
 
-		# 	train_mask[labeled_address_indices[train_indices]] = True
-		# 	test_mask[labeled_address_indices[test_indices]] = True
+	# 		train_mask[labeled_address_indices[train_indices]] = True
+	# 		test_mask[labeled_address_indices[test_indices]] = True			
 
-		# 	time2 = time.time()
-		# 	# 3. 打印划分信息
-		# 	print("划分数据集信息")
-		# 	print(f"训练集大小: {len(train_indices)} ({len(train_indices)/self._heteroData.num_labeled:.2%})")
-		# 	print(f"测试集大小: {len(test_indices)} ({len(test_indices)/self._heteroData.num_labeled:.2%})")
-		# 	print(f"划分数据集用时: {time2 - time1}")
-		# 	print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
-		# 	return train_mask, test_mask
+	# 		time2 = time.time()
+	# 		# 3. 打印划分信息
+	# 		print("划分数据集信息")
+	# 		print(f"训练集大小: {len(train_indices)} ({len(train_indices)/num_labeled:.2%})")
+	# 		print(f"测试集大小: {len(test_indices)} ({len(test_indices)/num_labeled:.2%})")
+	# 		print(f"划分数据集用时: {time2 - time1}")
+	# 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
+	# 		return train_mask, test_mask
+	
+	###################################################################
+	# def _stratified_train_test_split(X, y, test_size=0.25,
+	# 								stratify=True, shuffle=True, random_state=None):
+	# 	"""
+	# 	自定义 train_test_split，支持 stratify 和 shuffle 同时控制。
+		
+	# 	参数：
+	# 	----------
+	# 	X : array-like, shape (n_samples, n_features)
+	# 		特征矩阵
+	# 	y : array-like, shape (n_samples,)
+	# 		标签
+	# 	test_size : float
+	# 		测试集比例
+	# 	stratify : bool
+	# 		是否分层抽样
+	# 	shuffle : bool
+	# 		是否打乱数据
+	# 	random_state : int 或 None
+	# 		随机种子
+		
+	# 	返回：
+	# 	----------
+	# 	X_train, X_test, y_train, y_test
+	# 	"""		
+	# 	rng = check_random_state(random_state)
+	# 	X = np.array(X)
+	# 	y = np.array(y)
+	# 	n_samples = len(y)
+	# 	n_test = int(np.floor(test_size * n_samples))
+		
+	# 	if stratify:
+	# 		# 按类别分层
+	# 		train_idx, test_idx = [], []
+	# 		classes, y_indices = np.unique(y, return_inverse=True)
+	# 		for cls in range(len(classes)):
+	# 			cls_idx = np.where(y_indices == cls)[0]
+	# 			n_cls_test = int(np.floor(test_size * len(cls_idx)))
+	# 			cls_test_idx = rng.choice(cls_idx, size=n_cls_test, replace=False)
+	# 			cls_train_idx = np.setdiff1d(cls_idx, cls_test_idx)
+	# 			train_idx.extend(cls_train_idx)
+	# 			test_idx.extend(cls_test_idx)
+	# 	else:
+	# 		# 不分层，直接随机划分
+	# 		indices = np.arange(n_samples)
+	# 		test_idx = rng.choice(indices, size=n_test, replace=False)
+	# 		train_idx = np.setdiff1d(indices, test_idx)
+		
+	# 	# 是否打乱
+	# 	if shuffle:
+	# 		rng.shuffle(train_idx)
+	# 		rng.shuffle(test_idx)
+	# 	# else:
+	# 	# 	# 保持原始顺序
+	# 	# 	train_idx = np.sort(train_idx)
+	# 	# 	test_idx = np.sort(test_idx)
+		
+	# 	# return X[train_idx], X[test_idx], y[train_idx], y[test_idx]
+	# 	return train_idx, test_idx
+	# ##################################################
+		
+
+
 # ##################################################
 # d=BTNHGDatasetClass()
 # d._loadBTNHGV2Data()
