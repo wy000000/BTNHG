@@ -35,10 +35,15 @@ class BTNHGV2HeteroDataClass(Dataset):
 		super().__init__()
 		self.dataPath=dataPath
 		self.heteroData=None
+		self._address_id_map = None
+		self._coin_id_map = None
+		self._tx_id_map = None
+
 		if heteroData is not None:
 			self.heteroData=heteroData
 		else:
 			self._loadBTNHGV2Data(self.dataPath)
+
 
 	def _loadBTNHGV2Data(self, dataPath=BTNHGV2ParameterClass.dataPath):
 		"""
@@ -67,9 +72,9 @@ class BTNHGV2HeteroDataClass(Dataset):
 		coin_ids    = coin_feat_df['coinID'].unique()
 		tx_ids      = tx_feat_df['txID'].unique()
 
-		address_id_map = {id_: i for i, id_ in enumerate(address_ids)}
-		coin_id_map    = {id_: i for i, id_ in enumerate(coin_ids)}
-		tx_id_map      = {id_: i for i, id_ in enumerate(tx_ids)}
+		self._address_id_map = {id_: i for i, id_ in enumerate(address_ids)}
+		self._coin_id_map    = {id_: i for i, id_ in enumerate(coin_ids)}
+		self._tx_id_map      = {id_: i for i, id_ in enumerate(tx_ids)}
 
 		# 3. 初始化 HeteroData
 		self.heteroData = HeteroData()
@@ -101,32 +106,30 @@ class BTNHGV2HeteroDataClass(Dataset):
 			return torch.from_numpy(edge_index).long()
 
 		# 构建边
-		# self.heteroData['address', 'addr_to_coin', 'coin'].edge_index \
-		# 	= build_edge(edge_df, 'addressID', 'coinID', address_id_map, coin_id_map)
 		self.heteroData['address', 'addr_to_coin', 'coin'].edge_index \
-			= build_edge(edge_df, 'addressID', 'coinID', address_id_map, coin_id_map)
+			= build_edge(edge_df, 'addressID', 'coinID', self._address_id_map, self._coin_id_map)
 		
 		self.heteroData['tx', 'tx_to_coin', 'coin'].edge_index \
-			= build_edge(edge_df, 'txID_coin', 'coinID', tx_id_map, coin_id_map)
+			= build_edge(edge_df, 'txID_coin', 'coinID', self._tx_id_map, self._coin_id_map)
 
 		self.heteroData['coin', 'coin_to_tx', 'tx'].edge_index \
-			= build_edge(edge_df, 'coinID', 'coin_txID', coin_id_map, tx_id_map)
+			= build_edge(edge_df, 'coinID', 'coin_txID', self._coin_id_map, self._tx_id_map)
 		time2 = time.time()
 		print(f"构建边关系用时: {time2 - time1}")
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
-
+		#################################################################
 		# 6. 给 address 节点加标签
 		print("给 address 节点加标签")
 		time1 = time.time()
-		address_y = torch.full((len(address_id_map),), -1, dtype=torch.long)
+		address_y = torch.full((len(self._address_id_map),), -1, dtype=torch.long)
 		# 使用向量化操作
 		valid_cluster = edge_df[['addressID', 'clusterID']].dropna()
 		# 过滤出有效的地址和聚类ID
-		valid_mask = valid_cluster['addressID'].isin(address_id_map.keys())
+		valid_mask = valid_cluster['addressID'].isin(self._address_id_map.keys())
 		valid_data = valid_cluster[valid_mask]
 		# 批量转换和赋值
 		if not valid_data.empty:
-			indices = [address_id_map[addr] for addr in valid_data['addressID']]
+			indices = [self._address_id_map[addr] for addr in valid_data['addressID']]
 			# 这里仍然使用int()转换，但通过列表推导式更高效
 			clusters = [int(c) for c in valid_data['clusterID']]
 			address_y[indices] = torch.tensor(clusters, dtype=torch.long)
@@ -218,7 +221,7 @@ class BTNHGV2HeteroDataClass(Dataset):
 			if num_labeled == 0:
 				return None, None
 
-			labels = self.heteroData['address'].y[labeled_address_indices].numpy()
+			labels = self.heteroData['address'].y[labeled_address_indices].cpu().numpy()
 
 			randSeed = BTNHGV2ParameterClass.rand(isResetSeed)
 
@@ -232,7 +235,10 @@ class BTNHGV2HeteroDataClass(Dataset):
 			test_mask = torch.zeros(self.heteroData['address'].num_nodes, dtype=torch.bool)
 
 			train_mask[labeled_address_indices[train_indices]] = True
-			test_mask[labeled_address_indices[test_indices]] = True			
+			test_mask[labeled_address_indices[test_indices]] = True		
+			# if device is not None:
+			# train_mask = train_mask.cpu()
+			# test_mask = test_mask.cpu()	
 
 			time2 = time.time()
 			# 3. 打印划分信息
@@ -242,6 +248,22 @@ class BTNHGV2HeteroDataClass(Dataset):
 			print(f"划分数据集用时: {time2 - time1}")
 			print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 			return train_mask, test_mask
+	
+	def get_clusterID(self, addressID):
+		"""		
+		根据 addressID 查找对应的 clusterID。
+		
+		参数:
+			addressID: 原始地址ID (如 22389567)
+		
+		返回:
+			clusterID (int)，如果没有标签则返回 None
+		"""
+		if addressID not in self._address_id_map:
+			return(f"addressID: {addressID} 不在映射表中")		
+		idx = self._address_id_map[addressID]                # 找到节点索引
+		clusterID = int(self.heteroData['address'].y[idx])  # 查找对应标签		
+		return clusterID
 
 
 

@@ -6,16 +6,16 @@ class BTNHGV2ParameterClass():
 	dataPath=r"D:\BTNHG\BTNHGV2"
 	train_size=0.8
 	shuffle=True
-	batch_size=16
+	# batch_size=16
 	randSeed=42
-	isResetSeed=False
-	#for HAN
-	hidden_channels=32
-	out_channels=32
-	num_heads=4
-	dropout=0.4
-	###########################
-	
+	isResetSeed=False	
+
+	patience=4
+	lr=0.01
+	weight_decay=1e-4
+	epochs=16
+	loss_threshold=0.0001
+
 	_rng = np.random.default_rng(randSeed)
 	# 生成随机数
 	@classmethod
@@ -24,9 +24,9 @@ class BTNHGV2ParameterClass():
 			cls._rng = np.random.default_rng(seed)
 		return int(cls._rng.integers(0, 4294967296))
 	
-	patience=4
-	lr=0.01
-	weight_decay=1e-4
-	epochs=100
-	loss_threshold=0.0001
 
+	#for HAN
+	hidden_channels=32
+	out_channels=32
+	num_heads=4
+	dropout=0.4

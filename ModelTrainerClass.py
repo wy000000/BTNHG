@@ -2,8 +2,7 @@ import torch
 import torch.nn.functional as F
 from BTNHGV2ParameterClass import BTNHGV2ParameterClass
 class ModelTrainerClass:
-	def __init__(self, model,
-				# train_loader, test_loader,
+	def __init__(self, model,				
 				device=None,
 				lr=BTNHGV2ParameterClass.lr,
 				weight_decay=BTNHGV2ParameterClass.weight_decay,
@@ -14,8 +13,6 @@ class ModelTrainerClass:
 		通用训练器，支持早停
 		Args:
 			model: 传入的模型 (HAN, HGT, RGCN 等)
-			# train_loader: 训练数据加载器
-			# test_loader: 测试数据加载器
 			device: 运行设备 ("cuda" 或 "cpu")
 			lr: 学习率
 			weight_decay: 权重衰减
@@ -29,7 +26,8 @@ class ModelTrainerClass:
 		else:
 			self._device = device
 		print(f"using device: {self._device}")
-		self._model = model.to(self._device)
+		self._model = model
+		# self._model.heteroData = self._model.heteroData.to(self._device)
 		# self._train_loader = train_loader
 		# self._test_loader = test_loader
 		self._epochs = epochs
@@ -45,7 +43,7 @@ class ModelTrainerClass:
 		# self._best_state = None
 		# self._counter = 0
 
-	def _train_one_epoch(self, train_mask, addressLable):
+	def _train_one_epoch(self):
 		"""
 		使用self._model, self._train_loader, self._optimizer, self._device训练一个 epoch
 		Args:
@@ -53,18 +51,20 @@ class ModelTrainerClass:
 		Returns:
 			total_loss: 该 epoch 的平均损失
 		"""
+		# print(next(self._model.parameters()).device)
+		self._model = self._model.to(self._device)
+		self._model.heteroData = self._model.heteroData.to(self._device)
 		self._model.train()
 		self._optimizer.zero_grad()
 		out = self._model()
 		outAddress = out['address']
-		train_mask, _ = self._model.getTrainMask()
-		loss = F.cross_entropy(outAddress[train_mask], addressLable[train_mask])
+		train_mask=self._model.train_mask
+		loss = F.cross_entropy(outAddress[train_mask],\
+								self._model.heteroData["address"].y[train_mask])
 		loss.backward()
 		self._optimizer.step()
 		return loss.item()
-
-
-
+	
 		# total_loss = 0
 		# for batch in self._train_loader:
 		# 	batch = batch.to(self._device)
@@ -80,6 +80,7 @@ class ModelTrainerClass:
 
 	def run(self):
 		"""完整训练与测试流程，带早停"""
+		print("start train")
 		best_loss = float("inf")
 		loss=float("inf")
 		counter=0
@@ -118,19 +119,43 @@ class ModelTrainerClass:
 		#     # #保存最佳模型参数
 		#     # torch.save(self._best_state, "best_model.data")
 			
-	def test(self, loader=None):
+	def test(self):
 		"""在给定数据集上测试"""
-		if loader is None:
-			loader = self._test_loader
+		print("start test")
+		self._model = self._model.to(self._device)
+		self._model.heteroData = self._model.heteroData.to(self._device)
+		# 切换到评估模式并移动到设备
 		self._model.eval()
-		correct = 0
-		total = 0
+		# self._model.to(self._device)
+		# print(next(self._model.parameters()).device)
+
 		with torch.no_grad():
-			for batch in loader:
-				batch = batch.to(self._device)
-				out = self._model()
-				pred = out.argmax(dim=-1)
-				correct += int((pred == batch.y).sum())
-				total += batch.y.size(0)
-		print(f"Accuracy: {correct / total:.4f}")
-		return correct / total			
+			# 前向传播（模型内部自己拿 self._heteroData）
+			out = self._model()
+			
+			logits = out['address']  # shape: [num_nodes, num_classes]
+			test_mask = self._model.test_mask#.to(self._device)
+			y_true = self._model.heteroData["address"].y[test_mask]#.to(self._device)
+
+			# softmax 得到置信度
+			probs = F.softmax(logits[test_mask], dim=-1)
+			pred = probs.argmax(dim=-1)
+
+			# 计算准确率（分母直接用 test_mask 中 True 的数量）
+			correct = (pred == y_true).sum().item()
+			acc = correct / test_mask.sum().item()
+
+			# 每个预测的置信度（取预测类别对应的概率）
+			confidences = probs.max(dim=-1).values
+			avg_confidence = confidences.mean().item()
+
+			# 打印结果
+			# for i, (p, conf) in enumerate(zip(pred.tolist(), confidences.tolist())):
+			# 	print(f"Sample {i}: Predicted class = {p}, Confidence = {conf:.4f}")
+
+			print(f"Accuracy: {acc:.4f}")
+			print(f"Average confidence: {avg_confidence:.4f}")
+		# print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
+
+
+	
