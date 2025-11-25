@@ -6,7 +6,7 @@ class BTNHGV2ParameterClass():
 	dataPath=r"D:\BTNHG\BTNHGV2"
 	train_size=0.8
 	shuffle=True
-	# batch_size=16
+	batch_size=128
 	randSeed=42
 	isResetSeed=False	
 	accumulation_steps=16

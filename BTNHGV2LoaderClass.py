@@ -21,7 +21,10 @@ time2 = time.time()
 # print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
 class BTNHGV2LoaderClass:
-	def __init__(self, heteroData=None):
+	def __init__(self, heteroData=None,
+					batch_size=BTNHGV2ParameterClass.batch_size,
+					shuffle=BTNHGV2ParameterClass.shuffle,
+					isResetSeed=BTNHGV2ParameterClass.isResetSeed):
 		"""
 		初始化 BTNHGV2LoaderClass 类
 		Args:
@@ -31,9 +34,9 @@ class BTNHGV2LoaderClass:
 			return None
 		self._heteroData=heteroData
 		# self._train_size=train_size
-		# self._batch_size=batch_size
-		# self._shuffle=shuffle
-		# self._isResetSeed=isResetSeed
+		self._batch_size=batch_size
+		self._shuffle=shuffle
+		self._isResetSeed=isResetSeed
 	
 	def getTrainLoaderAndTestLoader(self, train_size=BTNHGV2ParameterClass.train_size,
 								batch_size=BTNHGV2ParameterClass.batch_size,
@@ -110,6 +113,39 @@ class BTNHGV2LoaderClass:
 
 		return train_loader, test_loader
 	
+	def getNeighborLoader(self,
+							mask=None,
+							shuffle=BTNHGV2ParameterClass.shuffle,
+							isResetSeed=BTNHGV2ParameterClass.isResetSeed):
+		"""
+		获取邻居加载器(NeighborLoader)，使用self._batch_size等参数对中心节点进行邻居采样
+		Args:
+			mask: 节点掩码，用于指定哪些节点作为中心节点进行采样，默认值为 None			
+			shuffle: 是否打乱数据集，默认值为 BTNHGV2ParameterClass.shuffle
+			isResetSeed: 是否重置随机种子，默认值为 False
+		Returns:
+			nbLoader: 邻居加载器(NeighborLoader类型)
+		"""
+		
+		nbLoader=NeighborLoader(data=self._heteroData,
+						  		num_neighbors=[-1, -1],
+								input_nodes=('address', mask), # 指定中心节点类型和集合
+								batch_size=self._batch_size,
+								shuffle=self._shuffle,
+								isResetSeed=self._isResetSeed)
+		return nbLoader
+		
+
+
+
+
+
+
+
+
+
+
+
 ###################################################################
 	# def getTrainTestMask(self, train_size=BTNHGV2ParameterClass.train_size,
 	# 						batch_size=BTNHGV2ParameterClass.batch_size,
@@ -322,72 +358,72 @@ class BTNHGV2LoaderClass:
 	#生成一个函数返回trainLoader, testLoader
 	
 
-#测试分布
-class TestHeteroDataClass:
-	def test_heteroData(self, heteroData):
-		# 创建数据集实例
-		# dataset = BTNHGDatasetClass()
-		# heteroData=dataset.get_heteroData()
+# #测试分布
+# class TestHeteroDataClass:
+# 	def test_heteroData(self, heteroData):
+# 		# 创建数据集实例
+# 		# dataset = BTNHGDatasetClass()
+# 		# heteroData=dataset.get_heteroData()
 
-		# 验证标签分布是否相同
-		print("\n=== 训练集和测试集标签分布验证 ===")
+# 		# 验证标签分布是否相同
+# 		print("\n=== 训练集和测试集标签分布验证 ===")
 
-		# 计算训练集和测试集标签
-		mask_train, mask_test = self._split_dataset()
-		# mask_train = heteroData['address'].train_mask
-		# mask_test = heteroData['address'].test_mask
+# 		# 计算训练集和测试集标签
+# 		mask_train, mask_test = self._split_dataset()
+# 		# mask_train = heteroData['address'].train_mask
+# 		# mask_test = heteroData['address'].test_mask
 
 		
-		# 过滤掉无效标签(-1)并计算有效标签的掩码
-		valid_train_mask = mask_train & (heteroData['address'].y != -1)
-		valid_test_mask = mask_test & (heteroData['address'].y != -1)
+# 		# 过滤掉无效标签(-1)并计算有效标签的掩码
+# 		valid_train_mask = mask_train & (heteroData['address'].y != -1)
+# 		valid_test_mask = mask_test & (heteroData['address'].y != -1)
 		
-		# 获取有效标签
-		valid_train_labels = heteroData['address'].y[valid_train_mask]
-		valid_test_labels = heteroData['address'].y[valid_test_mask]
+# 		# 获取有效标签
+# 		valid_train_labels = heteroData['address'].y[valid_train_mask]
+# 		valid_test_labels = heteroData['address'].y[valid_test_mask]
 		
-		# 计算训练集标签分布
-		if valid_train_labels.numel() > 0:
-			train_label_counts = torch.bincount(valid_train_labels)
-			train_label_dist = train_label_counts.float() / train_label_counts.sum()
+# 		# 计算训练集标签分布
+# 		if valid_train_labels.numel() > 0:
+# 			train_label_counts = torch.bincount(valid_train_labels)
+# 			train_label_dist = train_label_counts.float() / train_label_counts.sum()
 			
-			# 获取有正样本的标签索引
-			positive_indices = torch.nonzero(train_label_counts, as_tuple=True)[0]
-			positive_counts = train_label_counts[positive_indices]
-			positive_dists = train_label_dist[positive_indices]
+# 			# 获取有正样本的标签索引
+# 			positive_indices = torch.nonzero(train_label_counts, as_tuple=True)[0]
+# 			positive_counts = train_label_counts[positive_indices]
+# 			positive_dists = train_label_dist[positive_indices]
 		
-		# 计算测试集标签分布
-		if valid_test_labels.numel() > 0:
-			test_label_counts = torch.bincount(valid_test_labels)
-			test_label_dist = test_label_counts.float() / test_label_counts.sum()
+# 		# 计算测试集标签分布
+# 		if valid_test_labels.numel() > 0:
+# 			test_label_counts = torch.bincount(valid_test_labels)
+# 			test_label_dist = test_label_counts.float() / test_label_counts.sum()
 			
-			# 获取有正样本的标签索引
-			test_positive_indices = torch.nonzero(test_label_counts, as_tuple=True)[0]
-			test_positive_counts = test_label_counts[test_positive_indices]
-			test_positive_dists = test_label_dist[test_positive_indices]
+# 			# 获取有正样本的标签索引
+# 			test_positive_indices = torch.nonzero(test_label_counts, as_tuple=True)[0]
+# 			test_positive_counts = test_label_counts[test_positive_indices]
+# 			test_positive_dists = test_label_dist[test_positive_indices]
 		
-		# 打印统计信息
-		print(f"训练集大小: {len(valid_train_labels)} ({len(valid_train_labels)/heteroData.num_labeled:.2%})")
-		print(f"测试集大小: {len(valid_test_labels)} ({len(valid_test_labels)/heteroData.num_labeled:.2%})")
+# 		# 打印统计信息
+# 		print(f"训练集大小: {len(valid_train_labels)} ({len(valid_train_labels)/heteroData.num_labeled:.2%})")
+# 		print(f"测试集大小: {len(valid_test_labels)} ({len(valid_test_labels)/heteroData.num_labeled:.2%})")
 		
-		# 打印训练集标签分布
-		print("\n训练集标签分布:")
-		if valid_train_labels.numel() > 0:
-			# 使用向量化操作生成格式化字符串
-			train_lines = [f"标签 {idx}: {count} 个 ({dist:.2%})" 
-						for idx, count, dist in zip(positive_indices.tolist(), 
-													positive_counts.tolist(), 
-													positive_dists.tolist())]
-			print('\n'.join(train_lines))
+# 		# 打印训练集标签分布
+# 		print("\n训练集标签分布:")
+# 		if valid_train_labels.numel() > 0:
+# 			# 使用向量化操作生成格式化字符串
+# 			train_lines = [f"标签 {idx}: {count} 个 ({dist:.2%})" 
+# 						for idx, count, dist in zip(positive_indices.tolist(), 
+# 													positive_counts.tolist(), 
+# 													positive_dists.tolist())]
+# 			print('\n'.join(train_lines))
 		
-		# 打印测试集标签分布
-		print("\n测试集标签分布:")
-		if valid_test_labels.numel() > 0:
-			# 使用向量化操作生成格式化字符串
-			test_lines = [f"标签 {idx}: {count} 个 ({dist:.2%})" 
-						for idx, count, dist in zip(test_positive_indices.tolist(), 
-													test_positive_counts.tolist(), 
-													test_positive_dists.tolist())]
-			print('\n'.join(test_lines))
-		#print now time
-		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
+# 		# 打印测试集标签分布
+# 		print("\n测试集标签分布:")
+# 		if valid_test_labels.numel() > 0:
+# 			# 使用向量化操作生成格式化字符串
+# 			test_lines = [f"标签 {idx}: {count} 个 ({dist:.2%})" 
+# 						for idx, count, dist in zip(test_positive_indices.tolist(), 
+# 													test_positive_counts.tolist(), 
+# 													test_positive_dists.tolist())]
+# 			print('\n'.join(test_lines))
+# 		#print now time
+# 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
