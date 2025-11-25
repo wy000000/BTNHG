@@ -7,6 +7,7 @@ from BTNHGV2HeteroDataClass import BTNHGV2HeteroDataClass
 
 class HAN(torch.nn.Module):	
 	def __init__(self, heteroDataCls: BTNHGV2HeteroDataClass,
+				accumulation_steps=BTNHGV2ParameterClass.accumulation_steps,
 				hidden_channels=BTNHGV2ParameterClass.hidden_channels,
 				out_channels=BTNHGV2ParameterClass.out_channels,
 				num_heads=BTNHGV2ParameterClass.num_heads,
@@ -17,6 +18,7 @@ class HAN(torch.nn.Module):
 		Heterogeneous Graph Attention Network		
 		Args:
 			heteroDataCls (BTNHGV2HeteroDataClass): 异构图数据类
+			accumulation_steps (int, optional): 梯度累积步数. Defaults to BTNHGV2ParameterClass.accumulation_steps.
 			hidden_channels (int, optional): 隐藏层通道数. Defaults to BTNHGV2ParameterClass.hidden_channels.
 			out_channels (int, optional): 输出层通道数. Defaults to BTNHGV2ParameterClass.out_channels.
 			num_heads (int, optional): 注意力头数. Defaults to BTNHGV2ParameterClass.num_heads.
@@ -26,13 +28,14 @@ class HAN(torch.nn.Module):
 		self.heteroDataCls = heteroDataCls
 		self.train_mask, self.test_mask = self.heteroDataCls.getTrainTestMask()
 		self.heteroData = heteroDataCls.heteroData
+		self.accumulation_steps = accumulation_steps
 		self._metadata = self.heteroData.metadata()
 		#统计self.heteroData["address"].y中不等于-1的类别的数量
 		self._num_classes = self.heteroData["address"].y.unique().numel()-1
 		self._hidden_channels = hidden_channels
 		self._out_channels = out_channels
 		self._num_heads = num_heads
-		self._dropout = dropout
+		self._dropout = dropout		
 
 		self.conv1 = HANConv(
 			in_channels=-1,
@@ -41,14 +44,14 @@ class HAN(torch.nn.Module):
 			metadata=self._metadata
 		)
 		self.conv2 = HANConv(
-			in_channels=self._hidden_channels * self._num_heads,
+			in_channels=self._hidden_channels,
 			out_channels=self._out_channels,
 			heads=self._num_heads,
 			metadata=self._metadata
 		)
 		# 归一化层：LayerNorm
-		self.ln1 = torch.nn.LayerNorm(self._hidden_channels * self._num_heads)
-		self.ln2 = torch.nn.LayerNorm(self._out_channels * self._num_heads)
+		self.ln1 = torch.nn.LayerNorm(self._hidden_channels)
+		self.ln2 = torch.nn.LayerNorm(self._out_channels)
 
 		self.lin = torch.nn.Linear(self._out_channels, self._num_classes)
 

@@ -9,6 +9,7 @@ class BTNHGV2ParameterClass():
 	# batch_size=16
 	randSeed=42
 	isResetSeed=False	
+	accumulation_steps=16
 
 	patience=4
 	lr=0.01
@@ -28,5 +29,5 @@ class BTNHGV2ParameterClass():
 	#for HAN
 	hidden_channels=32
 	out_channels=32
-	num_heads=4
+	num_heads=2
 	dropout=0.4
