@@ -51,33 +51,70 @@ class ModelTrainerClass:
 		Returns:
 			total_loss: 该 epoch 的平均损失
 		"""
-		# print(next(self._model.parameters()).device)
 		self._model = self._model.to(self._device)
 		self._model.heteroData = self._model.heteroData.to(self._device)
 		self._model.train()
+		
+		# 梯度累积参数
+		accumulation_steps = self._model.accumulation_steps  # 根据需要调整
+		
+		# 将数据分成更小的部分
+		num_chunks = accumulation_steps
+		train_mask = self._model.train_mask
+		# 计算每个chunk的样本数
+		chunk_size = (train_mask.sum().item() + num_chunks - 1) // num_chunks
+		
+		total_loss = 0
 		self._optimizer.zero_grad()
-		out = self._model()
-		outAddress = out['address']
-		train_mask=self._model.train_mask
-		loss = F.cross_entropy(outAddress[train_mask],\
-								self._model.heteroData["address"].y[train_mask])
-		loss.backward()
-		self._optimizer.step()
-		return loss.item()
-	
-		# total_loss = 0
-		# for batch in self._train_loader:
-		# 	batch = batch.to(self._device)
-		# 	self._optimizer.zero_grad()
-		# 	out = self._model()
-		# 	# loss = F.cross_entropy(out, batch.y)
-		# 	mask = batch.y != -1
-		# 	loss = F.cross_entropy(out[mask], batch.y[mask])
-		# 	loss.backward()
-		# 	self._optimizer.step()
-		# 	total_loss += loss.item()
-		# return total_loss / len(self._train_loader)
-
+		
+		for i in range(num_chunks):
+			# 创建当前chunk的掩码
+			start_idx = i * chunk_size
+			end_idx = min((i + 1) * chunk_size, train_mask.sum().item())
+			chunk_indices = torch.where(train_mask)[0][start_idx:end_idx]
+			
+			# 创建chunk掩码
+			chunk_mask = torch.zeros_like(train_mask)
+			chunk_mask[chunk_indices] = True
+			
+			# 前向传播和损失计算
+			out = self._model()
+			outAddress = out['address']
+			loss = F.cross_entropy(outAddress[chunk_mask], 
+								self._model.heteroData["address"].y[chunk_mask])
+			loss = loss / accumulation_steps  # 缩放损失
+			loss.backward()
+			total_loss += loss.item() * accumulation_steps
+			
+			# 每accumulation_steps步更新一次参数
+			if (i + 1) % accumulation_steps == 0:
+				self._optimizer.step()
+				self._optimizer.zero_grad()
+		
+		return total_loss
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		# # print(next(self._model.parameters()).device)
+		# self._model = self._model.to(self._device)
+		# self._model.heteroData = self._model.heteroData.to(self._device)
+		# self._model.train()
+		# self._optimizer.zero_grad()
+		# out = self._model()
+		# outAddress = out['address']
+		# train_mask=self._model.train_mask
+		# loss = F.cross_entropy(outAddress[train_mask],\
+		# 						self._model.heteroData["address"].y[train_mask])
+		# loss.backward()
+		# self._optimizer.step()
+		# return loss.item()
+	################################################
 	def run(self):
 		"""完整训练与测试流程，带早停"""
 		print("start train")
