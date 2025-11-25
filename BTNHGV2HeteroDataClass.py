@@ -57,10 +57,38 @@ class BTNHGV2HeteroDataClass(Dataset):
 		# 1. 读取数据
 		print("start read data")
 		time1 = time.time()
+		# ###########################################前10%数据
+		# import csv
+		# def _get_csv_row_count(file_path):
+		# 	with open(file_path, 'r', encoding='utf-8') as f:
+		# 		reader = csv.reader(f)
+		# 		# 跳过表头
+		# 		next(reader, None)
+		# 		# 计算数据行数
+		# 		return sum(1 for row in reader)
+		# # 读取前10%数据
+		# addr_file_path = os.path.join(dataPath, "addressFeature.csv")
+		# addr_rows = _get_csv_row_count(addr_file_path)
+		# addr_feat_df = pd.read_csv(addr_file_path, nrows=int(addr_rows * 0.1))
+
+		# coin_file_path = os.path.join(dataPath, "coinFeature.csv")
+		# coin_rows = _get_csv_row_count(coin_file_path)
+		# coin_feat_df = pd.read_csv(coin_file_path, nrows=int(coin_rows * 0.1))
+
+		# tx_file_path = os.path.join(dataPath, "TxFeature.csv")
+		# tx_rows = _get_csv_row_count(tx_file_path)
+		# tx_feat_df = pd.read_csv(tx_file_path, nrows=int(tx_rows * 0.1))
+
+		# edge_file_path = os.path.join(dataPath, "hgEdgeV2.csv")
+		# edge_rows = _get_csv_row_count(edge_file_path)
+		# edge_df = pd.read_csv(edge_file_path, nrows=int(edge_rows * 0.1))
+		###################################################
+		#读取所有数据
 		addr_feat_df = pd.read_csv(os.path.join(dataPath, "addressFeature.csv"))
 		coin_feat_df = pd.read_csv(os.path.join(dataPath, "coinFeature.csv"))
 		tx_feat_df   = pd.read_csv(os.path.join(dataPath, "TxFeature.csv"))
 		edge_df      = pd.read_csv(os.path.join(dataPath, "hgEdgeV2.csv"))
+		################################
 		time2 = time.time()
 		print(f"读取数据用时: {time2 - time1}")
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
@@ -141,14 +169,17 @@ class BTNHGV2HeteroDataClass(Dataset):
 		#转成 无向图
 		print("转成无向图")
 		time1 = time.time()
-		print(f"当前边数: {self._getEdgeCount()}")
+		# print(f"当前边数: {self._getEdgeCount()}")
 		self._make_undirected()
-		print(f"当前边数: {self._getEdgeCount()}")
+		# 确保所有 edge_index 都是连续的
+		for store in self.heteroData.edge_stores:
+			store.edge_index = store.edge_index.contiguous()
+		# print(f"当前边数: {self._getEdgeCount()}")
 		time2 = time.time()
 		print(f"转无向图用时: {time2 - time1}")
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
-
+		#region
 		# #输出self.data的所有类型的结点及其特征矩阵的形状
 		# print("address node types:", self.heteroData.node_types)
 		# print("address:"+str(self.heteroData['address'].x.shape))
@@ -165,7 +196,7 @@ class BTNHGV2HeteroDataClass(Dataset):
 		# #输出self.heteroData.y不是null的元素数
 		# print("address y elements:", self.heteroData['address'].y.numel())
 		# print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
-	
+		#endregion
 
 	def _make_undirected(self):
 		"""
@@ -209,45 +240,70 @@ class BTNHGV2HeteroDataClass(Dataset):
 			total_edges += num_edges
 		return total_edges
 	
-	def getTrainTestMask(self, train_size=BTNHGV2ParameterClass.train_size,							
-							shuffle=BTNHGV2ParameterClass.shuffle,
-							isResetSeed=BTNHGV2ParameterClass.isResetSeed):			
-			
-			time1 = time.time()
-			
-			labeled_address_indices = torch.where(self.heteroData['address'].y != -1)[0]
-			num_labeled = len(labeled_address_indices)
+	def getTrainTestMask(self, train_size=BTNHGV2ParameterClass.train_size,
+	                     shuffle=BTNHGV2ParameterClass.shuffle,
+	                     isResetSeed=BTNHGV2ParameterClass.isResetSeed):				
+		"""
+		为异构图数据中的address节点生成训练集和测试集掩码。
+		
+		该函数从异构图数据中筛选出带有有效标签（非-1）的address节点，
+		使用分层抽样方法将数据按照指定比例划分为训练集和测试集，
+		确保训练集和测试集中各类别的分布与原始数据保持一致。
+		
+		参数
+		----------
+		train_size : float, 可选
+			训练集所占比例，默认值从BTNHGV2ParameterClass获取
+		shuffle : bool, 可选
+			是否打乱数据顺序，默认值从BTNHGV2ParameterClass获取
+		isResetSeed : bool, 可选
+			是否重置随机种子，控制是否每次调用生成相同的划分结果，
+			默认值从BTNHGV2ParameterClass获取
+		
+		返回
+		----------
+		tuple of torch.Tensor or (None, None)
+			返回两个布尔类型的PyTorch张量：
+			- train_mask: 长度为address节点总数的布尔张量，True表示该节点属于训练集
+			- test_mask: 长度为address节点总数的布尔张量，True表示该节点属于测试集
+			如果没有找到带标签的节点，则返回(None, None)    
+		"""
 
-			if num_labeled == 0:
-				return None, None
+		time1 = time.time()
+		
+		labeled_address_indices = torch.where(self.heteroData['address'].y != -1)[0]
+		num_labeled = len(labeled_address_indices)
 
-			labels = self.heteroData['address'].y[labeled_address_indices].cpu().numpy()
+		if num_labeled == 0:
+			return None, None
 
-			randSeed = BTNHGV2ParameterClass.rand(isResetSeed)
+		labels = self.heteroData['address'].y[labeled_address_indices].cpu().numpy()
 
-			train_indices, test_indices = train_test_split(
-				np.arange(num_labeled),
-				train_size=train_size,
-				stratify=labels,
-				random_state=randSeed)
+		randSeed = BTNHGV2ParameterClass.rand(isResetSeed)
 
-			train_mask = torch.zeros(self.heteroData['address'].num_nodes, dtype=torch.bool)
-			test_mask = torch.zeros(self.heteroData['address'].num_nodes, dtype=torch.bool)
+		train_indices, test_indices = train_test_split(
+			np.arange(num_labeled),
+			train_size=train_size,
+			stratify=labels,
+			random_state=randSeed)
 
-			train_mask[labeled_address_indices[train_indices]] = True
-			test_mask[labeled_address_indices[test_indices]] = True		
-			# if device is not None:
-			# train_mask = train_mask.cpu()
-			# test_mask = test_mask.cpu()	
+		train_mask = torch.zeros(self.heteroData['address'].num_nodes, dtype=torch.bool)
+		test_mask = torch.zeros(self.heteroData['address'].num_nodes, dtype=torch.bool)
 
-			time2 = time.time()
-			# 3. 打印划分信息
-			print("划分数据集信息")
-			print(f"训练集大小: {len(train_indices)} ({len(train_indices)/num_labeled:.2%})")
-			print(f"测试集大小: {len(test_indices)} ({len(test_indices)/num_labeled:.2%})")
-			print(f"划分数据集用时: {time2 - time1}")
-			print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
-			return train_mask, test_mask
+		train_mask[labeled_address_indices[train_indices]] = True
+		test_mask[labeled_address_indices[test_indices]] = True
+
+		self.heteroData['address'].train_mask = train_mask
+		self.heteroData['address'].test_mask = test_mask
+
+		time2 = time.time()
+		# 3. 打印划分信息
+		print("划分数据集信息")
+		print(f"训练集大小: {len(train_indices)} ({len(train_indices)/num_labeled:.2%})")
+		print(f"测试集大小: {len(test_indices)} ({len(test_indices)/num_labeled:.2%})")
+		print(f"划分数据集用时: {time2 - time1}")
+		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
+		return train_mask, test_mask
 	
 	def get_clusterID(self, addressID):
 		"""		
@@ -262,12 +318,6 @@ class BTNHGV2HeteroDataClass(Dataset):
 		if addressID not in self._address_id_map:
 			return(f"addressID: {addressID} 不在映射表中")		
 		idx = self._address_id_map[addressID]                # 找到节点索引
-		clusterID = int(self.heteroData['address'].y[idx])  # 查找对应标签		
+		clusterID = int(self.heteroData['address'].y[idx])  # 查找对应标签
+		
 		return clusterID
-
-
-
-
-
-
-

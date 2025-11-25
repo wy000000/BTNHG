@@ -7,28 +7,36 @@ from BTNHGV2HeteroDataClass import BTNHGV2HeteroDataClass
 
 class HAN(torch.nn.Module):	
 	def __init__(self, heteroDataCls: BTNHGV2HeteroDataClass,
-				accumulation_steps=BTNHGV2ParameterClass.accumulation_steps,
+				# accumulation_steps=BTNHGV2ParameterClass.accumulation_steps,
 				hidden_channels=BTNHGV2ParameterClass.hidden_channels,
 				out_channels=BTNHGV2ParameterClass.out_channels,
 				num_heads=BTNHGV2ParameterClass.num_heads,
 				dropout=BTNHGV2ParameterClass.dropout,
+				batch_size=BTNHGV2ParameterClass.batch_size,
+				shuffle=BTNHGV2ParameterClass.shuffle,
+				isResetSeed=BTNHGV2ParameterClass.isResetSeed
 				# num_classes
 				):
 		"""
 		Heterogeneous Graph Attention Network		
 		Args:
-			heteroDataCls (BTNHGV2HeteroDataClass): 异构图数据类
-			accumulation_steps (int, optional): 梯度累积步数. Defaults to BTNHGV2ParameterClass.accumulation_steps.
-			hidden_channels (int, optional): 隐藏层通道数. Defaults to BTNHGV2ParameterClass.hidden_channels.
-			out_channels (int, optional): 输出层通道数. Defaults to BTNHGV2ParameterClass.out_channels.
-			num_heads (int, optional): 注意力头数. Defaults to BTNHGV2ParameterClass.num_heads.
-			dropout (float, optional): Dropout 概率. Defaults to BTNHGV2ParameterClass.dropout.
+			hidden_channels=BTNHGV2ParameterClass.hidden_channels,
+			out_channels=BTNHGV2ParameterClass.out_channels,
+			num_heads=BTNHGV2ParameterClass.num_heads,
+			dropout=BTNHGV2ParameterClass.dropout,
+			batch_size=BTNHGV2ParameterClass.batch_size,
+			shuffle=BTNHGV2ParameterClass.shuffle,
+			isResetSeed=BTNHGV2ParameterClass.isResetSeed
 		"""
 		super().__init__()
 		self.heteroDataCls = heteroDataCls
-		self.train_mask, self.test_mask = self.heteroDataCls.getTrainTestMask()
+		# self.train_mask, self.test_mask = \
+		self.heteroDataCls.getTrainTestMask()
 		self.heteroData = heteroDataCls.heteroData
-		self.accumulation_steps = accumulation_steps
+		# self.accumulation_steps = accumulation_steps
+		self.batch_size = batch_size
+		self.shuffle = shuffle
+		self.isResetSeed = isResetSeed
 		self._metadata = self.heteroData.metadata()
 		#统计self.heteroData["address"].y中不等于-1的类别的数量
 		self._num_classes = self.heteroData["address"].y.unique().numel()-1
@@ -55,10 +63,9 @@ class HAN(torch.nn.Module):
 
 		self.lin = torch.nn.Linear(self._out_channels, self._num_classes)
 
-	def forward(self, x_dict=None, edge_index_dict=None):
-		if x_dict is None or edge_index_dict is None:
-			x_dict = self.heteroData.collect("x")
-			edge_index_dict = self.heteroData.collect("edge_index")
+	def forward(self, heteroData):
+		x_dict = heteroData.collect("x")
+		edge_index_dict = heteroData.collect("edge_index")
 		# 第一次卷积：对每种关系做注意力聚合
 		print(f"x_dict[address]: {x_dict["address"].shape}")
 		x_dict = self.conv1(x_dict, edge_index_dict)
@@ -74,4 +81,7 @@ class HAN(torch.nn.Module):
 		x_dict = {k: F.relu(v) for k, v in x_dict.items()}
 		print(f"x_dict[address]: {x_dict["address"].shape}")
 		# 只对 address 节点做分类
-		return self.lin(x_dict["address"])
+		out=self.lin(x_dict["address"])
+		#打印out的shape和类型
+		print(f"out: {out.shape}, {out.dtype}")
+		return out
