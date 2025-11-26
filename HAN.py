@@ -67,21 +67,21 @@ class HAN(torch.nn.Module):
 		x_dict = heteroData.collect("x")
 		edge_index_dict = heteroData.collect("edge_index")
 		# 第一次卷积：对每种关系做注意力聚合
-		print(f"x_dict[address]: {x_dict["address"].shape}")
+		# print(f"x_dict[address]: {x_dict["address"].shape}")
 		x_dict = self.conv1(x_dict, edge_index_dict)
-		print(f"x_dict after conv1: {x_dict["address"].shape}")
+		# print(f"x_dict after conv1: {x_dict["address"].shape}")
 		x_dict = {k: self.ln1(v) for k, v in x_dict.items()}
 		x_dict = {k: F.relu(v) for k, v in x_dict.items()}
 		# Dropout 防止过拟合
 		x_dict = {k: F.dropout(v, p=self._dropout, training=self.training) for k, v in x_dict.items()}
 		# 第二次卷积
 		x_dict = self.conv2(x_dict, edge_index_dict)
-		print(f"x_dict[address] after conv2: {x_dict["address"].shape}")
+		# print(f"x_dict[address] after conv2: {x_dict["address"].shape}")
 		x_dict = {k: self.ln2(v) for k, v in x_dict.items()}
 		x_dict = {k: F.relu(v) for k, v in x_dict.items()}
-		print(f"x_dict[address]: {x_dict["address"].shape}")
+		# print(f"x_dict[address]: {x_dict["address"].shape}")
 		# 只对 address 节点做分类
 		out=self.lin(x_dict["address"])
 		#打印out的shape和类型
-		print(f"out: {out.shape}, {out.dtype}")
+		# print(f"out: {out.shape}, {out.dtype}")
 		return out

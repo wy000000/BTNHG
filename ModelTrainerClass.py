@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 from BTNHGV2ParameterClass import BTNHGV2ParameterClass
 from torch_geometric.loader import NeighborLoader
+import time
 
 class ModelTrainerClass:
 	def __init__(self, model,				
@@ -10,7 +11,8 @@ class ModelTrainerClass:
 				weight_decay=BTNHGV2ParameterClass.weight_decay,
 				epochs=BTNHGV2ParameterClass.epochs,
 				patience=BTNHGV2ParameterClass.patience,
-				loss_threshold=BTNHGV2ParameterClass.loss_threshold):
+				loss_threshold=BTNHGV2ParameterClass.loss_threshold,
+				stoppableLoss=BTNHGV2ParameterClass.stoppableLoss):
 		"""
 		通用训练器，支持早停
 		Args:
@@ -41,6 +43,7 @@ class ModelTrainerClass:
 										weight_decay=self._weight_decay)
 		# # 早停相关变量
 		self._loss_threshold = loss_threshold
+		self._stoppableLoss=stoppableLoss
 		# self._best_acc = 0.0
 		# self._best_state = None
 		# self._counter = 0
@@ -82,110 +85,28 @@ class ModelTrainerClass:
 
 			pred = outAddress[train_mask]
 			target = batch['address'].y[train_mask].to(torch.long)
-			#打印pred, target
-			print(f"pred: {pred}")
-			print(f"target: {target}")
-			assert target.min() >= 0
-			assert target.max() < pred.size(1)
+			# 检查 pred 是否有 NaN
+			assert not torch.isnan(pred).any(), "pred 中存在 NaN"
+			# 检查 pred 是否有 Inf
+			assert not torch.isinf(pred).any(), "pred 中存在 Inf"
+			# 检查 target 是否在合法范围 [0, num_classes-1]
+			num_classes = pred.size(1)   # 假设 pred 的第二维是类别数
+			assert target.min() >= 0 and target.max() < num_classes, \
+				f"target 超出范围: min={target.min().item()}, max={target.max().item()},\
+										num_classes={num_classes}"
+
 			loss = F.cross_entropy(pred, target)
-
-			# loss = F.cross_entropy(outAddress[train_mask], batch['address'].y[train_mask])
-
+			print(f"loss: {loss.item()}")
 			loss.backward()
 			self._optimizer.step()
 
 			total_loss += loss.item()
 			total_batches += 1
-			##############################################
-			# batch = batch.to(self._device)
-
-			# self._optimizer.zero_grad()
-			# out = self._model(batch)  # 模型前向传播
-			# outAddress = out['address']  # [num_nodes_in_batch, num_classes]
-
-			# # 注意：batch 中的 train_mask 是局部的，需要用 batch['address'].train_mask
-			# train_mask = batch['address'].train_mask  # [num_nodes_in_batch]，布尔掩码
-
-			# # 用布尔掩码索引行，得到 [num_train_nodes, num_classes]
-			# pred = outAddress[train_mask]
-
-			# # 同样用布尔掩码取标签，得到 [num_train_nodes]
-			# target = batch['address'].y[train_mask]
-
-			# loss = F.cross_entropy(pred, target)
-
-			# loss.backward()
-			# self._optimizer.step()
-
-			# total_loss += loss.item()
-			# total_batches += 1
-			#######################################
 
 		total_loss /= total_batches #if total_batches > 0 else 0
 
 		# 返回平均损失
-		return total_loss
-	
-		#region
-		#######################################################
-		# self._model = self._model.to(self._device)		
-		# self._model.train()
-
-		# # self._model.heteroData = self._model.heteroData.to(self._device)
-
-		# self._optimizer.zero_grad()
-		# out = self._model()
-		# outAddress = out['address']
-		# train_mask=self._model.train_mask
-		# loss = F.cross_entropy(outAddress[train_mask],\
-		# 						self._model.heteroData["address"].y[train_mask])
-		# loss.backward()
-		# self._optimizer.step()
-		# return loss.item()
-
-		#######################################################
-		#endregion
-
-		#region
-
-		# # 梯度累积参数
-		# accumulation_steps = self._model.accumulation_steps  # 根据需要调整
-		
-		# # 将数据分成更小的部分
-		# num_chunks = accumulation_steps
-		# train_mask = self._model.train_mask
-		# # 计算每个chunk的样本数
-		# chunk_size = (train_mask.sum().item() + num_chunks - 1) // num_chunks
-		
-		# total_loss = 0
-		# self._optimizer.zero_grad()
-		
-		# for i in range(num_chunks):
-		# 	# 创建当前chunk的掩码
-		# 	start_idx = i * chunk_size
-		# 	end_idx = min((i + 1) * chunk_size, train_mask.sum().item())
-		# 	chunk_indices = torch.where(train_mask)[0][start_idx:end_idx]
-			
-		# 	# 创建chunk掩码
-		# 	chunk_mask = torch.zeros_like(train_mask)
-		# 	chunk_mask[chunk_indices] = True
-			
-		# 	# 前向传播和损失计算
-		# 	out = self._model()
-		# 	outAddress = out['address']
-		# 	loss = F.cross_entropy(outAddress[chunk_mask], 
-		# 						self._model.heteroData["address"].y[chunk_mask])
-		# 	loss = loss / accumulation_steps  # 缩放损失
-		# 	loss.backward()
-		# 	total_loss += loss.item() * accumulation_steps
-			
-		# 	# 每accumulation_steps步更新一次参数
-		# 	if (i + 1) % accumulation_steps == 0:
-		# 		self._optimizer.step()
-		# 		self._optimizer.zero_grad()
-		
-		# return total_loss
-		#endregion
+		return total_loss		
 		
 		
 	################################################
@@ -198,18 +119,18 @@ class ModelTrainerClass:
 		epoch=0
 		for epoch in range(1, self._epochs + 1):
 			loss = self._train_one_epoch()
-			if(epoch%10==0):
+			if(epoch%4==0):
 				print(f"Epoch {epoch:03d} | Loss: {loss:.4f}")
-			if best_loss - loss > self._loss_threshold:
-				best_loss = loss
-				# best_state = self._model.state_dict()
-				counter = 0
+			# if best_loss - loss > self._loss_threshold:
+			# 	best_loss = loss
+			# 	# best_state = self._model.state_dict()
+			# 	counter = 0
 			##############################################################
 			# train_acc = self.test(loader=self._train_loader)
 			# test_acc = self.test(loader=self._test_loader)
 			# print(f"Epoch {epoch:03d} | Loss: {loss:.4f} | Train Acc: {train_acc:.4f} | Test Acc: {test_acc:.4f}")
 			# # 早停逻辑：监控测试集损失
-			if best_loss - loss > self._loss_threshold:
+			if loss<best_loss:
 				best_loss = loss
 				# best_state = self._model.state_dict()
 				counter = 0
@@ -219,7 +140,10 @@ class ModelTrainerClass:
 			##############################################################
 			else:
 				counter += 1
-				if counter >= self._patience:
+
+			if best_loss - loss < self._loss_threshold\
+				and loss<self._stoppableLoss and epoch>self._patience\
+				and counter>=self._patience:
 					print(f"早停触发！")
 					break
 		print(f"训练完成, epoch : {epoch}, loss: {loss:.4f}")
@@ -283,10 +207,9 @@ class ModelTrainerClass:
 
 		print(f"Accuracy: {acc:.4f}")
 		print(f"Average confidence: {avg_confidence:.4f}")
+		#打印当前时间
+		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 		return acc, avg_confidence
-
-
-
 
 
 

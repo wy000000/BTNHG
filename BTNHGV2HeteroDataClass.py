@@ -38,6 +38,7 @@ class BTNHGV2HeteroDataClass(Dataset):
 		self._address_id_map = None
 		self._coin_id_map = None
 		self._tx_id_map = None
+		self._cluster_id_map = None
 
 		if heteroData is not None:
 			self.heteroData=heteroData
@@ -149,6 +150,9 @@ class BTNHGV2HeteroDataClass(Dataset):
 		# 6. 给 address 节点加标签
 		print("给 address 节点加标签")
 		time1 = time.time()
+		unique_cluster_ids = edge_df["clusterID"].dropna().unique()
+		self._cluster_id_map = {cid: idx for idx, cid in enumerate(unique_cluster_ids)}
+
 		address_y = torch.full((len(self._address_id_map),), -1, dtype=torch.long)
 		# 使用向量化操作
 		valid_cluster = edge_df[['addressID', 'clusterID']].dropna()
@@ -157,12 +161,13 @@ class BTNHGV2HeteroDataClass(Dataset):
 		valid_data = valid_cluster[valid_mask]
 		# 批量转换和赋值
 		if not valid_data.empty:
+			# 根据 addressID 找到对应的索引位置
 			indices = [self._address_id_map[addr] for addr in valid_data['addressID']]
-			# 这里仍然使用int()转换，但通过列表推导式更高效
-			clusters = [int(c) for c in valid_data['clusterID']]
+			# 将 clusterID 转换为 self._cluster_id_map 中的索引值
+			clusters = [self._cluster_id_map[c] for c in valid_data['clusterID']]
+			# 赋值给 address_y
 			address_y[indices] = torch.tensor(clusters, dtype=torch.long)
 		self.heteroData['address'].y = address_y
-
 		time2 = time.time()
 		print("给 address 节点加标签用时: ", time2 - time1)
 		
@@ -310,7 +315,7 @@ class BTNHGV2HeteroDataClass(Dataset):
 		根据 addressID 查找对应的 clusterID。
 		
 		参数:
-			addressID: 原始地址ID (如 22389567)
+			addressID: 原始地址ID (如 addressID=22389567, clusterID=6438509)
 		
 		返回:
 			clusterID (int)，如果没有标签则返回 None
@@ -318,6 +323,8 @@ class BTNHGV2HeteroDataClass(Dataset):
 		if addressID not in self._address_id_map:
 			return(f"addressID: {addressID} 不在映射表中")		
 		idx = self._address_id_map[addressID]                # 找到节点索引
-		clusterID = int(self.heteroData['address'].y[idx])  # 查找对应标签
-		
+		clusterIDIndex = int(self.heteroData['address'].y[idx])  # 查找对应标签
+		#反查 clusterID
+		clusterID = [clusterID for clusterID, idx in self._cluster_id_map.items()\
+					if idx == clusterIDIndex]		
 		return clusterID
