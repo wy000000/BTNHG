@@ -15,7 +15,6 @@ class HAN(torch.nn.Module):
 				batch_size=BTNHGV2ParameterClass.batch_size,
 				shuffle=BTNHGV2ParameterClass.shuffle,
 				isResetSeed=BTNHGV2ParameterClass.isResetSeed
-				# num_classes
 				):
 		"""
 		Heterogeneous Graph Attention Network		
