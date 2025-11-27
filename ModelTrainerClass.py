@@ -116,6 +116,7 @@ class ModelTrainerClass:
 	def run(self):
 		"""完整训练与测试流程，带早停"""
 		print("start train")
+		time1 = time.time()
 		best_loss = float("inf")
 		loss=float("inf")
 		counter=0
@@ -151,6 +152,9 @@ class ModelTrainerClass:
 					print(f"早停触发！")
 					break
 		print(f"训练完成, epoch : {epoch}, loss: {loss:.4f}")
+		time2 = time.time()
+		print(f"训练用时: {time2 - time1}")
+		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
 		# # 恢复最佳模型参数
 		# if self._best_state is not None:
@@ -163,6 +167,7 @@ class ModelTrainerClass:
 	def test(self):
 		"""使用 neighborLoader 在测试集上测试，并展示混淆矩阵"""
 		print("start test")
+		time1 = time.time()
 		self._model = self._model.to(self._device)
 		self._model.eval()
 
@@ -219,8 +224,9 @@ class ModelTrainerClass:
 		print(f"Average confidence: {avg_confidence:.4f}")
 		print(f"Balanced Accuracy: {balanced_acc:.4f}")
 		self._model.heteroDataCls.printClusterCount()
+		time2 = time.time()
+		print(f"测试用时: {time2 - time1}")
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
-
 
 		# 绘制混淆矩阵
 		cm = confusion_matrix(all_labels, all_preds)
