@@ -15,6 +15,7 @@ from torch_geometric.data import Dataset
 from sklearn.model_selection import train_test_split
 from sklearn.utils import check_random_state
 from BTNHGV2ParameterClass import BTNHGV2ParameterClass
+from sklearn.utils.class_weight import compute_class_weight
 # import sys
 time2 = time.time()
 # print("import used time: ", time2 - time1)
@@ -39,6 +40,8 @@ class BTNHGV2HeteroDataClass(Dataset):
 		self._coin_id_map = None
 		self._tx_id_map = None
 		self._cluster_id_map = None
+		self.class_weight=None #在getTrainTestMask()中计算
+		self.cluster_count=None
 
 		if heteroData is not None:
 			self.heteroData=heteroData
@@ -110,17 +113,17 @@ class BTNHGV2HeteroDataClass(Dataset):
 
 		# 4. 构建节点特征矩阵
 		self.heteroData['address'].x = torch.tensor(
-			addr_feat_df.drop(columns=['addressID']).values, dtype=torch.float
+			addr_feat_df.drop(columns=['addressID']).fillna(-1).values, dtype=torch.float
 		)
 		self.heteroData['coin'].x = torch.tensor(
-			coin_feat_df.drop(columns=['coinID']).values, dtype=torch.float
+			coin_feat_df.drop(columns=['coinID']).fillna(0).values, dtype=torch.float
 		)
 		self.heteroData['tx'].x = torch.tensor(
-			tx_feat_df.drop(columns=['txID']).values, dtype=torch.float
+			tx_feat_df.drop(columns=['txID']).fillna(0).values, dtype=torch.float
 		)
 		time2 = time.time()
-		print(f"构建ID map and 节点特征矩阵用时: {time2 - time1}")
-		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
+		# print(f"构建ID map and 节点特征矩阵用时: {time2 - time1}")
+		# print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
 		# 5. 建立边关系（向量化处理）
 		print("构建边关系")
@@ -150,6 +153,7 @@ class BTNHGV2HeteroDataClass(Dataset):
 		# 6. 给 address 节点加标签
 		print("给 address 节点加标签")
 		time1 = time.time()
+		# 构建聚类ID映射
 		unique_cluster_ids = edge_df["clusterID"].dropna().unique()
 		self._cluster_id_map = {cid: idx for idx, cid in enumerate(unique_cluster_ids)}
 
@@ -169,10 +173,10 @@ class BTNHGV2HeteroDataClass(Dataset):
 			address_y[indices] = torch.tensor(clusters, dtype=torch.long)
 		self.heteroData['address'].y = address_y
 		time2 = time.time()
-		print("给 address 节点加标签用时: ", time2 - time1)
+		# print("给 address 节点加标签用时: ", time2 - time1)
 		
-		#转成 无向图
-		print("转成无向图")
+		# #转成 无向图
+		# print("转成无向图")
 		time1 = time.time()
 		# print(f"当前边数: {self._getEdgeCount()}")
 		self._make_undirected()
@@ -181,27 +185,13 @@ class BTNHGV2HeteroDataClass(Dataset):
 			store.edge_index = store.edge_index.contiguous()
 		# print(f"当前边数: {self._getEdgeCount()}")
 		time2 = time.time()
-		print(f"转无向图用时: {time2 - time1}")
+		# print(f"转无向图用时: {time2 - time1}")
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
-		#region
-		# #输出self.data的所有类型的结点及其特征矩阵的形状
-		# print("address node types:", self.heteroData.node_types)
-		# print("address:"+str(self.heteroData['address'].x.shape))
-		# print("coin:"+str(self.heteroData['coin'].x.shape))
-		# print("tx:"+str(self.heteroData['tx'].x.shape))
-		# # 输出self.data的所有类型的边及其边索引的形状
-		# print("edge types:", self.heteroData.edge_types)
-		# # print("address-coin:"+str(self.heteroData['address', 'addr_to_coin', 'coin'].edge_index.shape))
-		# print("coin-to-addr:"+str(self.heteroData['coin', 'coin_to_addr', 'address'].edge_index.shape))
-		# print("tx-coin:"+str(self.heteroData['tx', 'tx_to_coin', 'coin'].edge_index.shape))
-		# print("coin-tx:"+str(self.heteroData['coin', 'coin_to_tx', 'tx'].edge_index.shape))
-		# #输出self.heteroData.y的形状
-		# print("address y shape:", self.heteroData['address'].y.shape)
-		# #输出self.heteroData.y不是null的元素数
-		# print("address y elements:", self.heteroData['address'].y.numel())
-		# print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
-		#endregion
+		self._countCluster()
+		# self.printClusterCount()
+
+		
 
 	def _make_undirected(self):
 		"""
@@ -229,9 +219,8 @@ class BTNHGV2HeteroDataClass(Dataset):
 						self.heteroData[(src, rel, dst)].edge_attr.clone()
 		time2 = time.time()
 		#输出self.heteroData的所有边的数量
-		print(f"make undirected graph用时: {time2 - time1}")
-		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
-	total_edges = 0
+		# print(f"make undirected graph用时: {time2 - time1}")
+		# print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
 	def _getEdgeCount(self):
 		"""
@@ -250,6 +239,7 @@ class BTNHGV2HeteroDataClass(Dataset):
 	                     isResetSeed=BTNHGV2ParameterClass.isResetSeed):				
 		"""
 		为异构图数据中的address节点生成训练集和测试集掩码。
+		同时生成种类权重。
 		
 		该函数从异构图数据中筛选出带有有效标签（非-1）的address节点，
 		使用分层抽样方法将数据按照指定比例划分为训练集和测试集，
@@ -275,23 +265,28 @@ class BTNHGV2HeteroDataClass(Dataset):
 		"""
 
 		time1 = time.time()
-		
+
+		# 获取所有有标签的节点索引
 		labeled_address_indices = torch.where(self.heteroData['address'].y != -1)[0]
 		num_labeled = len(labeled_address_indices)
 
 		if num_labeled == 0:
 			return None, None
 
+		# 获取标签
 		labels = self.heteroData['address'].y[labeled_address_indices].cpu().numpy()
 
+		# 随机种子
 		randSeed = BTNHGV2ParameterClass.rand(isResetSeed)
 
+		# 划分训练集和测试集
 		train_indices, test_indices = train_test_split(
 			np.arange(num_labeled),
 			train_size=train_size,
 			stratify=labels,
 			random_state=randSeed)
 
+		# 创建 mask
 		train_mask = torch.zeros(self.heteroData['address'].num_nodes, dtype=torch.bool)
 		test_mask = torch.zeros(self.heteroData['address'].num_nodes, dtype=torch.bool)
 
@@ -301,14 +296,50 @@ class BTNHGV2HeteroDataClass(Dataset):
 		self.heteroData['address'].train_mask = train_mask
 		self.heteroData['address'].test_mask = test_mask
 
+		# ✅ 计算 class_weight（基于训练集标签）
+		train_labels = self.heteroData['address'].y[train_mask].cpu().numpy()
+		classes = np.unique(train_labels)
+		weights = compute_class_weight(class_weight='balanced', classes=classes, y=train_labels)
+		self.class_weight = torch.tensor(weights, dtype=torch.float)
+
 		time2 = time.time()
-		# 3. 打印划分信息
+		#打印划分信息
 		print("划分数据集信息")
 		print(f"训练集大小: {len(train_indices)} ({len(train_indices)/num_labeled:.2%})")
 		print(f"测试集大小: {len(test_indices)} ({len(test_indices)/num_labeled:.2%})")
 		print(f"划分数据集用时: {time2 - time1}")
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 		return train_mask, test_mask
+
+	def _countCluster(self):
+		"""
+		统计每个类别的数量
+		"""
+		# 获取所有标签
+		y_all = self.heteroData['address'].y
+		# 过滤掉无效标签（假设 -1 表示无效）
+		valid_y = y_all[y_all != -1].cpu().numpy()
+		# 统计每个类别的数量，并存储到对象（字典）中
+		classes, counts = np.unique(valid_y, return_counts=True)
+		# 拼接成二维数组：第一行是类别，第二行是数量
+		self.class_count = np.vstack((classes, counts))
+
+	def printClusterCount(self):
+		"""
+		打印每个类别的数量
+		"""
+		# 指定宽度，例如 6
+		width = 6
+		# 第一行输出类别，每个元素占用固定宽度
+		print("类别: ", end="")
+		for c in self.class_count[0]:
+			print(f"{c:<{width}}", end="")
+		print()  # 换行
+		# 第二行输出数量，每个元素占用固定宽度
+		print("数量: ", end="")
+		for cnt in self.class_count[1]:
+			print(f"{cnt:<{width}}", end="")
+		print()		
 	
 	def get_clusterID(self, addressID):
 		"""		
