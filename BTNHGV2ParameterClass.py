@@ -11,12 +11,12 @@ class BTNHGV2ParameterClass():
 	isResetSeed=False
 	epochsDisplay=4
 
-	useTrainWeight=True
+	useTrainWeight=False
 
 	patience=8
 	lr=0.01
 	weight_decay=1e-4
-	epochs=64
+	epochs=512
 	loss_threshold=0.0001
 	stoppableLoss=0.5
 
