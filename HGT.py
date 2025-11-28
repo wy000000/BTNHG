@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import HGTConv
 from torch_geometric.data import HeteroData
-from torch_scatter import scatter_mean, scatter_sum, scatter_max
 
 class HGTClassifier(nn.Module):
     def __init__(
@@ -15,8 +14,8 @@ class HGTClassifier(nn.Module):
         num_layers=2,
         heads=4,
         dropout=0.2,
-        readout="mean",
         proj=True,
+        target_ntype="address",   # 指定分类的目标节点类型
     ):
         super().__init__()
         node_types, edge_types = metadata
@@ -24,6 +23,7 @@ class HGTClassifier(nn.Module):
         self.edge_types = edge_types
         self.hidden_channels = hidden_channels
         self.dropout = dropout
+        self.target_ntype = target_ntype
 
         # 输入投影
         if proj:
@@ -50,7 +50,7 @@ class HGTClassifier(nn.Module):
             ntype: nn.LayerNorm(hidden_channels) for ntype in node_types
         })
 
-        self.readout_mode = readout
+        # 分类头：只针对目标节点类型
         self.cls = nn.Sequential(
             nn.Linear(hidden_channels, hidden_channels),
             nn.ReLU(),
@@ -59,10 +59,6 @@ class HGTClassifier(nn.Module):
         )
 
     def forward(self, data: HeteroData) -> torch.Tensor:
-        """
-        输入: HeteroData
-        输出: 图级分类 logits
-        """
         # 1) 输入投影
         h = {}
         for ntype in data.node_types:
@@ -81,17 +77,10 @@ class HGTClassifier(nn.Module):
                 h[ntype] = F.relu(h[ntype])
                 h[ntype] = F.dropout(h[ntype], p=self.dropout, training=self.training)
 
-        # 3) 读出为图级表示
-        pooled = []
-        for ntype in h:
-            if h[ntype].numel() > 0:
-                if hasattr(data[ntype], "batch") and data[ntype].batch is not None:
-                    batch = data[ntype].batch
-                    pooled.append(scatter_mean(h[ntype], batch, dim=0))
-                else:
-                    pooled.append(h[ntype].mean(dim=0, keepdim=True))
-        g = torch.stack(pooled, dim=0).mean(dim=0)
+        # 3) 只取目标节点类型的嵌入
+        target_h = h[self.target_ntype]   # [num_address_nodes, hidden]
 
         # 4) 分类头
-        logits = self.cls(g)
+        logits = self.cls(target_h)       # [num_address_nodes, out_channels]
+
         return logits
