@@ -153,7 +153,8 @@ class ModelTrainerClass:
 					break
 		print(f"训练完成, epoch : {epoch}, loss: {loss:.4f}")
 		time2 = time.time()
-		print(f"训练用时: {time2 - time1}")
+		#打印训练用时，格式为时：分：秒
+		print(f"训练用时: {time.strftime('%H:%M:%S', time.gmtime(time2 - time1))}")
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
 		# # 恢复最佳模型参数
