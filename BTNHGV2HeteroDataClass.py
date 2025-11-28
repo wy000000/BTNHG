@@ -179,7 +179,11 @@ class BTNHGV2HeteroDataClass(Dataset):
 		# print("转成无向图")
 		time1 = time.time()
 		# print(f"当前边数: {self._getEdgeCount()}")
-		self._make_undirected()
+
+		#无向与自环二选一。无向信息更全。有向丢信息，效果不好。
+		self._to_undirected()
+		# self._add_self_loops_for_isolated_nodes()
+
 		# 确保所有 edge_index 都是连续的
 		for store in self.heteroData.edge_stores:
 			store.edge_index = store.edge_index.contiguous()
@@ -191,9 +195,25 @@ class BTNHGV2HeteroDataClass(Dataset):
 		self._countCluster()
 		# self.printClusterCount()
 
-		
+	def _add_self_loops_for_isolated_nodes(self):
+	# 遍历所有节点类型
+		for ntype in self.heteroData.node_types:
+			num_nodes = self.heteroData[ntype].num_nodes
 
-	def _make_undirected(self):
+			# 检查该节点类型是否有入边
+			has_in_edge = False
+			for (src, rel, dst), edge_index in self.heteroData.edge_index_dict.items():
+				if dst == ntype and edge_index.size(1) > 0:
+					has_in_edge = True
+					break
+
+			# 如果没有入边，则添加自环
+			if not has_in_edge:
+				self_loop_index = torch.arange(num_nodes)
+				edge_index = torch.stack([self_loop_index, self_loop_index], dim=0)
+				self.heteroData[(ntype, 'self', ntype)].edge_index = edge_index		
+
+	def _to_undirected(self):
 		"""
 		将self.heteroData有向异构图转为无向图:为每条边添加反向边
 		"""
