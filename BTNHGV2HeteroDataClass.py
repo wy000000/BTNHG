@@ -16,6 +16,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.utils import check_random_state
 from BTNHGV2ParameterClass import BTNHGV2ParameterClass
 from sklearn.utils.class_weight import compute_class_weight
+import csv
 # import sys
 time2 = time.time()
 # print("import used time: ", time2 - time1)
@@ -26,12 +27,14 @@ class BTNHGV2HeteroDataClass(Dataset):
 	"""
 	比特币交易网络数据集类，用于处理异构图数据的划分和加载
 	"""
-	def __init__(self, heteroData=None, dataPath=BTNHGV2ParameterClass.dataPath):
+	def __init__(self, heteroData=None,
+			dataPath=BTNHGV2ParameterClass.dataPath):
+			# debugMode=BTNHGV2ParameterClass.debugMode):
 		"""
 		初始化 BTNHGV2HeteroDataClass 类
 		Args:
 			heteroData: 异构图数据对象 (HeteroData)，如果为 None，则从文件加载
-			dataPath: 数据文件路径，默认值为 BTNHGV2ParameterClass.dataPath
+			dataPath: 数据文件路径，默认值为 BTNHGV2ParameterClass.dataPath			
 		"""
 		super().__init__()
 		self.dataPath=dataPath
@@ -42,14 +45,16 @@ class BTNHGV2HeteroDataClass(Dataset):
 		self._cluster_id_map = None
 		self.class_weight=None #在getTrainTestMask()中计算
 		self.cluster_count=None
+		# self.debugMode=debugMode
 
 		if heteroData is not None:
 			self.heteroData=heteroData
 		else:
-			self._loadBTNHGV2Data(self.dataPath)
-
-
-	def _loadBTNHGV2Data(self, dataPath=BTNHGV2ParameterClass.dataPath):
+			self._loadBTNHGV2Data(dataPath=self.dataPath)
+								# debugMode=self.debugMode)
+	def _loadBTNHGV2Data(self,
+						dataPath=BTNHGV2ParameterClass.dataPath):
+						# debugMode=BTNHGV2ParameterClass.debugMode):
 		"""
 		从文件加载比特币交易网络数据集,放入self.heteroData
 		Args:
@@ -61,32 +66,33 @@ class BTNHGV2HeteroDataClass(Dataset):
 		# 1. 读取数据
 		print("start read data")
 		time1 = time.time()
-		# ###########################################前10%数据
-		# import csv
-		# def _get_csv_row_count(file_path):
-		# 	with open(file_path, 'r', encoding='utf-8') as f:
-		# 		reader = csv.reader(f)
-		# 		# 跳过表头
-		# 		next(reader, None)
-		# 		# 计算数据行数
-		# 		return sum(1 for row in reader)
-		# # 读取前10%数据
-		# addr_file_path = os.path.join(dataPath, "addressFeature.csv")
-		# addr_rows = _get_csv_row_count(addr_file_path)
-		# addr_feat_df = pd.read_csv(addr_file_path, nrows=int(addr_rows * 0.1))
+		###########################################读取前10%数据，会出错。
+		# if debugMode:		
+		# 	def _get_csv_row_count(file_path):
+		# 		with open(file_path, 'r', encoding='utf-8') as f:
+		# 			reader = csv.reader(f)
+		# 			# 跳过表头
+		# 			next(reader, None)
+		# 			# 计算数据行数
+		# 			return sum(1 for row in reader)
+		# 	# 读取前10%数据
+		# 	addr_file_path = os.path.join(dataPath, "addressFeature.csv")
+		# 	addr_rows = _get_csv_row_count(addr_file_path)
+		# 	addr_feat_df = pd.read_csv(addr_file_path, nrows=int(addr_rows * 0.1))
 
-		# coin_file_path = os.path.join(dataPath, "coinFeature.csv")
-		# coin_rows = _get_csv_row_count(coin_file_path)
-		# coin_feat_df = pd.read_csv(coin_file_path, nrows=int(coin_rows * 0.1))
+		# 	coin_file_path = os.path.join(dataPath, "coinFeature.csv")
+		# 	coin_rows = _get_csv_row_count(coin_file_path)
+		# 	coin_feat_df = pd.read_csv(coin_file_path, nrows=int(coin_rows * 0.1))
 
-		# tx_file_path = os.path.join(dataPath, "TxFeature.csv")
-		# tx_rows = _get_csv_row_count(tx_file_path)
-		# tx_feat_df = pd.read_csv(tx_file_path, nrows=int(tx_rows * 0.1))
+		# 	tx_file_path = os.path.join(dataPath, "TxFeature.csv")
+		# 	tx_rows = _get_csv_row_count(tx_file_path)
+		# 	tx_feat_df = pd.read_csv(tx_file_path, nrows=int(tx_rows * 0.1))
 
-		# edge_file_path = os.path.join(dataPath, "hgEdgeV2.csv")
-		# edge_rows = _get_csv_row_count(edge_file_path)
-		# edge_df = pd.read_csv(edge_file_path, nrows=int(edge_rows * 0.1))
-		###################################################
+		# 	edge_file_path = os.path.join(dataPath, "hgEdgeV2.csv")
+		# 	edge_rows = _get_csv_row_count(edge_file_path)
+		# 	edge_df = pd.read_csv(edge_file_path, nrows=int(edge_rows * 0.1))
+		##################################################
+		# else:
 		#读取所有数据
 		addr_feat_df = pd.read_csv(os.path.join(dataPath, "addressFeature.csv"))
 		coin_feat_df = pd.read_csv(os.path.join(dataPath, "coinFeature.csv"))
@@ -193,7 +199,7 @@ class BTNHGV2HeteroDataClass(Dataset):
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
 		self._countCluster()
-		# self.printClusterCount()
+		self.printClusterCount()
 
 	def _add_self_loops_for_isolated_nodes(self):
 	# 遍历所有节点类型
@@ -256,7 +262,7 @@ class BTNHGV2HeteroDataClass(Dataset):
 	
 	def getTrainTestMask(self, train_size=BTNHGV2ParameterClass.train_size,
 	                     shuffle=BTNHGV2ParameterClass.shuffle,
-	                     isResetSeed=BTNHGV2ParameterClass.isResetSeed):				
+	                     resetSeed=BTNHGV2ParameterClass.resetSeed):				
 		"""
 		为异构图数据中的address节点生成训练集和测试集掩码。
 		同时生成种类权重。
@@ -271,7 +277,7 @@ class BTNHGV2HeteroDataClass(Dataset):
 			训练集所占比例，默认值从BTNHGV2ParameterClass获取
 		shuffle : bool, 可选
 			是否打乱数据顺序，默认值从BTNHGV2ParameterClass获取
-		isResetSeed : bool, 可选
+		resetSeed : bool, 可选
 			是否重置随机种子，控制是否每次调用生成相同的划分结果，
 			默认值从BTNHGV2ParameterClass获取
 		
@@ -297,7 +303,7 @@ class BTNHGV2HeteroDataClass(Dataset):
 		labels = self.heteroData['address'].y[labeled_address_indices].cpu().numpy()
 
 		# 随机种子
-		randSeed = BTNHGV2ParameterClass.rand(isResetSeed)
+		randSeed = BTNHGV2ParameterClass.rand(resetSeed)
 
 		# 划分训练集和测试集
 		train_indices, test_indices = train_test_split(
