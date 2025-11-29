@@ -3,84 +3,95 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import HGTConv
 from torch_geometric.data import HeteroData
+from BTNHGV2ParameterClass import BTNHGV2ParameterClass
+from BTNHGV2HeteroDataClass import BTNHGV2HeteroDataClass
 
-class HGTClassifier(nn.Module):
-    def __init__(
-        self,
-        metadata,
-        in_channels,
-        hidden_channels,
-        out_channels,
-        num_layers=2,
-        heads=4,
-        dropout=0.2,
-        proj=True,
-        target_ntype="address",   # 指定分类的目标节点类型
-    ):
-        super().__init__()
-        node_types, edge_types = metadata
-        self.node_types = node_types
-        self.edge_types = edge_types
-        self.hidden_channels = hidden_channels
-        self.dropout = dropout
-        self.target_ntype = target_ntype
+class HGTClass(nn.Module):
+	def __init__(self,
+				heteroDataCls: BTNHGV2HeteroDataClass,
+				hidden_channels=BTNHGV2ParameterClass.hidden_channels,
+				out_channels=BTNHGV2ParameterClass.out_channels,
+				num_heads=BTNHGV2ParameterClass.num_heads,
+				num_layers=BTNHGV2ParameterClass.num_layers,
+				dropout=BTNHGV2ParameterClass.dropout,
+				doesUseProj=BTNHGV2ParameterClass.HGT_doesUseProj,
+				batch_size=BTNHGV2ParameterClass.batch_size,
+				shuffle=BTNHGV2ParameterClass.shuffle,
+				resetSeed=BTNHGV2ParameterClass.resetSeed):
+		super().__init__()
+		self.heteroDataCls = heteroDataCls
+		self.heteroDataCls.getTrainTestMask()
+		self.heteroData = heteroDataCls.heteroData
+		self._metadata = self.heteroData.metadata()		
+		self._out_channels = out_channels
+		self._node_types, self._edge_types = self._metadata
+		self._hidden_channels = hidden_channels
+		self.batch_size=batch_size
+		self.shuffle=shuffle
+		self.resetSeed=resetSeed
+		self._dropout = dropout
+		self._num_heads = num_heads
+		self._num_layers = num_layers
 
-        # 输入投影
-        if proj:
-            self.proj = nn.ModuleDict({
-                ntype: nn.Linear(in_channels[ntype], hidden_channels)
-                for ntype in node_types
-            })
-        else:
-            self.proj = nn.ModuleDict()
+		self._DoesUseProj = doesUseProj
+		self._proj = None
+		# 提取每种节点类型的输入维度
+		self._in_channels = {
+			ntype: self.heteroData[ntype].x.shape[1]
+			for ntype in self.heteroData.node_types}
 
-        # HGT 层
-        self.convs = nn.ModuleList([
-            HGTConv(
-                in_channels=hidden_channels,
-                out_channels=hidden_channels,
-                metadata=metadata,
-                heads=heads,
-                group='sum'
-            )
-            for _ in range(num_layers)
-        ])
+		# 输入投影
+		if self._DoesUseProj:
+			self._proj = nn.ModuleDict({
+				ntype: nn.Linear(self._in_channels[ntype], self._hidden_channels)
+				for ntype in self._node_types})
+		else:
+			self._proj = nn.ModuleDict()
 
-        self.norms = nn.ModuleDict({
-            ntype: nn.LayerNorm(hidden_channels) for ntype in node_types
-        })
+		# HGT层
+		self.convs = nn.ModuleList([
+						HGTConv(
+							in_channels=self._hidden_channels,
+							out_channels=self._hidden_channels,
+							metadata=self._metadata,
+							heads=self._num_heads)
+						for _ in range(self._num_layers)
+					])
 
-        # 分类头：只针对目标节点类型
-        self.cls = nn.Sequential(
-            nn.Linear(hidden_channels, hidden_channels),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(hidden_channels, out_channels)
-        )
+		self.norms = nn.ModuleDict({
+			ntype: nn.LayerNorm(self._hidden_channels) for ntype in self._node_types})
 
-    def forward(self, data: HeteroData) -> torch.Tensor:
-        # 1) 输入投影
-        h = {}
-        for ntype in data.node_types:
-            x = data[ntype].x
-            if ntype in self.proj:
-                h[ntype] = self.proj[ntype](x)
-            else:
-                h[ntype] = x
-            h[ntype] = F.dropout(h[ntype], p=self.dropout, training=self.training)
+		# 分类头：只针对目标节点类型
+		self.cls = nn.Sequential(
+			nn.Linear(self._hidden_channels, self._hidden_channels),
+			nn.ReLU(),
+			nn.Dropout(self._dropout),
+			nn.Linear(self._hidden_channels, self._out_channels)
+		)
 
-        # 2) HGT 层传播
-        for conv in self.convs:
-            h = conv(h, data.edge_index_dict)
-            for ntype in h:
-                h[ntype] = self.norms[ntype](h[ntype])
-                h[ntype] = F.relu(h[ntype])
-                h[ntype] = F.dropout(h[ntype], p=self.dropout, training=self.training)
+	def forward(self, data: HeteroData) -> torch.Tensor:
+		# 1) 输入投影
+		h = {}
+		for ntype in data.node_types:
+			x = data[ntype].x
+			if ntype in self._proj:
+				h[ntype] = self._proj[ntype](x)
+			else:
+				h[ntype] = x
+			h[ntype] = F.dropout(input=h[ntype], p=self._dropout)
 
-        # 3) 只取目标节点类型的嵌入
-        target_h = h[self.target_ntype]   # [num_address_nodes, hidden]
+		# 2) HGT 层传播
+		for conv in self.convs:
+			h = conv(h, data.edge_index_dict)
+			for ntype in h:
+				h[ntype] = self.norms[ntype](h[ntype])
+				h[ntype] = F.relu(input=h[ntype])
+				h[ntype] = F.dropout(input=h[ntype], p=self._dropout)
 
-        # 4) 分类头
-        logits = self.cls(target_h)       # [num_address_nodes, out_channels]
+		# 3) 只取目标节点类型的嵌入
+		target_h = h["address"]   # [num_address_nodes, hidden]
 
-        return logits
+		# 4) 分类头
+		logits = self.cls(target_h)       # [num_address_nodes, out_channels]
+
+		return logits

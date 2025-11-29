@@ -10,6 +10,7 @@ import time
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from sklearn.metrics import balanced_accuracy_score
 import matplotlib.pyplot as plt
+import numpy as np
 
 class ModelTrainerClass:
 	def __init__(self, model,				
@@ -94,7 +95,9 @@ class ModelTrainerClass:
 
 			pred = outAddress[train_mask]
 			target = batch['address'].y[train_mask].to(torch.long)
-
+			#print pred, target
+			# print(f"pred: {pred}")
+			# print(f"target: {target}")
 			if(self._useTrainWeight):
 				trainWeight=self._model.heteroDataCls.class_weight.to(self._device)
 			else:
@@ -122,7 +125,7 @@ class ModelTrainerClass:
 		counter=0
 		epoch=0
 		epochDisplay=BTNHGV2ParameterClass.epochsDisplay
-		for epoch in range(1, self._epochs + 1):
+		for epoch in range(1, self._epochs + 1):			
 			loss = self._train_one_epoch()
 			if(epoch % epochDisplay == 0):
 				print(f"Epoch {epoch:03d} | Loss: {loss:.4f}")
@@ -221,13 +224,60 @@ class ModelTrainerClass:
 		avg_confidence = total_confidence / total_batches if total_batches > 0 else 0
 		balanced_acc = balanced_accuracy_score(all_labels, all_preds)		
 
+		self.showResult(acc=acc,
+						avg_confidence=avg_confidence,
+						balanced_acc=balanced_acc,
+						all_preds=all_preds,
+						all_labels=all_labels)
+
+		time2 = time.time()
+		print(f"测试用时: {time2 - time1}")
+		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
+		return acc, avg_confidence
+	
+	def showResult(self, acc, avg_confidence, balanced_acc, all_preds, all_labels):
 		print(f"Accuracy: {acc:.4f}")
 		print(f"Average confidence: {avg_confidence:.4f}")
 		print(f"Balanced Accuracy: {balanced_acc:.4f}")
 		self._model.heteroDataCls.printClusterCount()
-		time2 = time.time()
-		print(f"测试用时: {time2 - time1}")
-		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
+
+		# 绘制预测与真实数量的柱状图
+		# 获取所有类别
+		classes = np.unique(np.concatenate([all_preds, all_labels]))
+
+		# 统计每个类别的预测数量和真实数量
+		pred_counts = [np.sum(np.array(all_preds) == c) for c in classes]
+		label_counts = [np.sum(np.array(all_labels) == c) for c in classes]
+
+		# 绘制柱状图
+		x = np.arange(len(classes))  # 类别索引
+		width = 0.35  # 柱子宽度
+
+		fig, ax = plt.subplots(figsize=(8, 6))
+		rects1 = ax.bar(x - width/2, pred_counts, width, label='Predicted', color='skyblue')
+		rects2 = ax.bar(x + width/2, label_counts, width, label='True', color='salmon')
+
+		# 添加标签和标题
+		ax.set_xlabel('Classes')
+		ax.set_ylabel('Counts')
+		ax.set_title('Predicted vs True Counts per Class')
+		ax.set_xticks(x)
+		ax.set_xticklabels(classes)
+		ax.legend()
+
+		# 在柱子上标注数值
+		for rects in [rects1, rects2]:
+			for rect in rects:
+				height = rect.get_height()
+				ax.annotate(f'{height}',
+							xy=(rect.get_x() + rect.get_width() / 2, height),
+							xytext=(0, 3),  # 向上偏移 3
+							textcoords="offset points",
+							ha='center', va='bottom')
+
+		plt.tight_layout()
+		plt.show()
+
 
 		# 绘制混淆矩阵
 		cm = confusion_matrix(all_labels, all_preds)
@@ -236,4 +286,3 @@ class ModelTrainerClass:
 		plt.title("Confusion Matrix on Test Set")
 		plt.show()
 
-		return acc, avg_confidence

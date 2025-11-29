@@ -17,9 +17,13 @@ print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 heteroDataClass=BTNHGV2HeteroDataClass()
 
 from ModelTrainerClass import ModelTrainerClass
-from HAN import HAN
+from HAN import HANClass
+from HGT import HGTClass
+from RGCN import RGCNClass
 
-gmodel=HAN(heteroDataCls=heteroDataClass)
+gmodel=HANClass(heteroDataCls=heteroDataClass)
+# gmodel=HGTClass(heteroDataCls=heteroDataClass)
+# gmodel=RGCNClass(heteroDataCls=heteroDataClass)
 
 trainer=ModelTrainerClass(model=gmodel)
 
