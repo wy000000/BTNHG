@@ -3,76 +3,82 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.data import HeteroData
 from torch_geometric.nn import RGCNConv
-from torch_geometric.utils import to_homogeneous
+# from torch_geometric.transforms import ToHomogeneous
+# from torch_geometric.utils import to_homogeneous
+from BTNHGV2HeteroDataClass import BTNHGV2HeteroDataClass
+from BTNHGV2ParameterClass import BTNHGV2ParameterClass
 
+class RGCNClass(nn.Module):
+	"""
+	RGCN 异构图分类器 —— 只对 'address' 节点中 train_mask==True 的节点进行分类
+	"""
+	def __init__(self,
+				heteroDataCls: BTNHGV2HeteroDataClass,
+				hidden_channels=BTNHGV2ParameterClass.hidden_channels,
+				out_channels=BTNHGV2ParameterClass.out_channels,				
+				num_layers=BTNHGV2ParameterClass.num_layers,
+				dropout=BTNHGV2ParameterClass.dropout,
+				batch_size=BTNHGV2ParameterClass.batch_size,
+				shuffle=BTNHGV2ParameterClass.shuffle,
+				resetSeed=BTNHGV2ParameterClass.resetSeed):		
+		super().__init__()
+		self.heteroDataCls = heteroDataCls
+		self.heteroDataCls.getTrainTestMask()		
+		self.heteroData = heteroDataCls.heteroData
+		self._num_layers = num_layers
+		self._node_types = list(self.heteroData.node_types)
+		self.batch_size = batch_size
+		self.shuffle = shuffle
+		self.resetSeed = resetSeed
+		self._dropout = nn.Dropout(p=dropout)
 
-class HeteroRGCNClassifier(nn.Module):
-    """
-    RGCN 异构图分类器 —— 只对 'address' 节点中 train_mask==True 的节点进行分类
-    """
-    def __init__(self,
-                 in_channels_dict: dict,
-                 hidden_channels: int,
-                 out_channels: int,
-                 num_relations: int | None = None,
-                 num_layers: int = 2,
-                 dropout: float = 0.5):
-        super().__init__()
-        self.node_types = list(in_channels_dict.keys())
-        self.in_proj = nn.ModuleDict({
-            ntype: nn.Linear(in_channels_dict[ntype], hidden_channels)
-            for ntype in self.node_types
-        })
+		self._in_proj = nn.ModuleDict()
+		for node_type in self._node_types:
+			in_channels = self.heteroData[node_type].num_features
+			self._in_proj[node_type] = nn.Linear(in_channels, hidden_channels)
+		# self._in_proj = nn.ModuleDict({
+		# 	ntype: nn.Linear(self.heteroData[ntype].x.shape[1], hidden_channels)
+		# 	for ntype in self._node_types
+		# })  两种self._in_proj写法等价
+		self._num_relations = len(self.heteroData.edge_types)
+		self.convs = nn.ModuleList()
+		self.btnorms = nn.ModuleList()
+		for _ in range(self._num_layers):
+			self.convs.append(RGCNConv(hidden_channels, hidden_channels,
+						num_relations=self._num_relations if self._num_relations else 0))
+			self.btnorms.append(nn.BatchNorm1d(hidden_channels))
+		
+		self._classifier = nn.Linear(hidden_channels, out_channels)
 
-        self.num_relations = num_relations
-        self.convs = nn.ModuleList()
-        for _ in range(num_layers):
-            self.convs.append(RGCNConv(hidden_channels, hidden_channels,
-                                       num_relations=self.num_relations if self.num_relations else 0))
+	def forward(self, data: HeteroData) -> torch.Tensor:
+		# 1) 投影各类型节点特征
+		for ntype in self._node_types:
+			if data[ntype].x is None:
+				raise ValueError(f"Missing .x for node type '{ntype}'")
+			data[ntype].x = self._in_proj[ntype](data[ntype].x)
+			# data[ntype].x = F.relu(data[ntype].x)
 
-        self.dropout = nn.Dropout(dropout)
-        self.classifier = nn.Linear(hidden_channels, out_channels)
+		# 2) 转为 homogeneous 图
+		data_h = data.to_homogeneous()
+		x, edge_index = data_h.x, data_h.edge_index
+		edge_type = data_h.edge_type
+		node_type = data_h.node_type 
 
-        self._initialized_relations = self.num_relations is not None
+		# 3) RGCN 层
+		for conv, norm in zip(self.convs, self.btnorms):
+			x = conv(x, edge_index, edge_type)
+			x = norm(x)
+			x = F.relu(x)
+			x = self._dropout(x)
 
-    def forward(self, data: HeteroData) -> torch.Tensor:
-        # 1) 投影各类型节点特征
-        for ntype in self.node_types:
-            if data[ntype].x is None:
-                raise ValueError(f"Missing .x for node type '{ntype}'")
-            data[ntype].x = self.in_proj[ntype](data[ntype].x)
+		# 4) 只取 address 节点的表示
+		address_type_id = data.node_types.index("address")   # 从原始 hetero 图获取
+		address_mask = (node_type == address_type_id)
 
-        # 2) 转为 homogeneous 图
-        data_h = to_homogeneous(data, node_attrs=["x"], edge_attrs=[])
-        edge_type = data_h.edge_type
+		# 5) 取出所有 address 节点（不再筛选 train_mask）
+		address_x = x[address_mask]                 # homogeneous 中的所有 address 节点
 
-        if not self._initialized_relations:
-            num_relations = int(edge_type.max().item()) + 1 if edge_type.numel() > 0 else 0
-            self.convs = nn.ModuleList([
-                RGCNConv(self.convs[0].in_channels, self.convs[0].out_channels, num_relations=num_relations)
-                for _ in range(len(self.convs))
-            ])
-            self._initialized_relations = True
-
-        x, edge_index = data_h.x, data_h.edge_index
-
-        # 3) RGCN 层
-        for conv in self.convs:
-            x = conv(x, edge_index, edge_type)
-            x = F.relu(x)
-            x = self.dropout(x)
-
-        # 4) 只取 address 节点的表示
-        address_type_id = data_h._node_type_dict["address"]
-        mask_address = (data_h.node_type == address_type_id)
-
-        # 5) 再筛选 train_mask
-        # 注意：to_homogeneous 会把每个节点的 mask 合并成一个 tensor
-        # 所以 data_h.train_mask 对应所有节点的 mask
-        mask_train = data_h.train_mask & mask_address
-
-        x_address_train = x[mask_train]
-
-        # 6) 分类
-        out = self.classifier(x_address_train)
-        return out
+		# 6) 分类
+		# address_x = self._dropout(address_x)
+		out = self._classifier(address_x)
+		return out
