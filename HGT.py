@@ -29,7 +29,7 @@ class HGTClass(nn.Module):
 		self.batch_size=batch_size
 		self.shuffle=shuffle
 		self.resetSeed=resetSeed
-		self._dropout = dropout
+		self._dropout = nn.Dropout(p=dropout)
 		self._num_heads = num_heads
 		self._num_layers = num_layers
 
@@ -63,9 +63,9 @@ class HGTClass(nn.Module):
 
 		# 分类头：只针对目标节点类型
 		self.cls = nn.Sequential(
-			nn.Linear(self._hidden_channels, self._hidden_channels),
-			nn.ReLU(),
-			nn.Dropout(self._dropout),
+			# nn.Linear(self._hidden_channels, self._hidden_channels),
+			# nn.ReLU(),
+			# self._dropout,
 			nn.Linear(self._hidden_channels, self._out_channels)
 		)
 
@@ -78,20 +78,31 @@ class HGTClass(nn.Module):
 				h[ntype] = self._proj[ntype](x)
 			else:
 				h[ntype] = x
-			h[ntype] = F.dropout(input=h[ntype], p=self._dropout)
+			# h[ntype] = self._dropout(h[ntype])   # 输入投影后可选 Dropout
 
-		# 2) HGT 层传播
+		# 2) HGT 层传播 (Conv → Residual → Norm → ReLU → Dropout)
 		for conv in self.convs:
-			h = conv(h, data.edge_index_dict)
-			for ntype in h:
-				h[ntype] = self.norms[ntype](h[ntype])
-				h[ntype] = F.relu(input=h[ntype])
-				h[ntype] = F.dropout(input=h[ntype], p=self._dropout)
+			h_new = conv(h, data.edge_index_dict)   # HGTConv 输出
+			for ntype in h_new:
+				# 残差连接
+				h_new[ntype] = h_new[ntype] + h[ntype]
+
+				# 归一化 (推荐 LayerNorm)
+				h_new[ntype] = self.norms[ntype](h_new[ntype])
+
+				# 激活函数
+				h_new[ntype] = F.relu(h_new[ntype])
+
+				# Dropout
+				h_new[ntype] = self._dropout(h_new[ntype])
+
+			h = h_new   # 更新 h
 
 		# 3) 只取目标节点类型的嵌入
 		target_h = h["address"]   # [num_address_nodes, hidden]
 
 		# 4) 分类头
-		logits = self.cls(target_h)       # [num_address_nodes, out_channels]
+		logits = self.cls(target_h)   # [num_address_nodes, out_channels]
 
 		return logits
+

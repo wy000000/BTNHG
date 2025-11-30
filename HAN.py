@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import HANConv
 from torch_geometric.loader import NeighborLoader
@@ -41,7 +42,7 @@ class HANClass(torch.nn.Module):
 		self._hidden_channels = hidden_channels
 		self._out_channels = out_channels
 		self._num_heads = num_heads
-		self._dropout = dropout		
+		self._dropout = nn.Dropout(p=dropout)
 
 		self.conv1 = HANConv(
 			in_channels=-1,
@@ -56,30 +57,40 @@ class HANClass(torch.nn.Module):
 			metadata=self._metadata
 		)
 		# 归一化层：LayerNorm
-		self.ln1 = torch.nn.LayerNorm(self._hidden_channels)
-		self.ln2 = torch.nn.LayerNorm(self._out_channels)
+		self.lynm1 = torch.nn.LayerNorm(self._hidden_channels)
+		self.lynm2 = torch.nn.LayerNorm(self._out_channels)
 
 		self.lin = torch.nn.Linear(self._out_channels, self._num_classes)
 
 	def forward(self, heteroData):
-		# x_dict = heteroData.collect("x")
-		# edge_index_dict = heteroData.collect("edge_index")
 		x_dict = heteroData.x_dict
 		edge_index_dict = heteroData.edge_index_dict
-		# 第一次卷积：对每种关系做注意力聚合
-		x_dict = self.conv1(x_dict, edge_index_dict)
-		# print(f"x_dict after conv1: {x_dict["address"].shape}")
-		x_dict = {k: self.ln1(v) for k, v in x_dict.items()}
-		x_dict = {k: F.relu(v) for k, v in x_dict.items()}
-		# Dropout 防止过拟合
-		x_dict = {k: F.dropout(input=v, p=self._dropout) for k, v in x_dict.items()}
+
+		# 第一次卷积
+		h1 = self.conv1(x_dict, edge_index_dict)
+		# # 残差连接
+		# h1 = {k: h1[k] + x_dict[k] for k in h1}
+		# 归一化
+		h1 = {k: self.lynm1(v) for k, v in h1.items()}
+		# 激活函数
+		h1 = {k: F.relu(v) for k, v in h1.items()}
+		# Dropout
+		h1 = {k: self._dropout(v) for k, v in h1.items()}
+
 		# 第二次卷积
-		x_dict = self.conv2(x_dict, edge_index_dict)
-		# print(f"x_dict[address] after conv2: {x_dict["address"].shape}")
-		x_dict = {k: self.ln2(v) for k, v in x_dict.items()}
-		x_dict = {k: F.relu(v) for k, v in x_dict.items()}
+		h2 = self.conv2(h1, edge_index_dict)
+		# # 残差连接
+		# h2 = {k: h2[k] + h1[k] for k in h2}
+		# 归一化
+		h2 = {k: self.lynm2(v) for k, v in h2.items()}
+		# 激活函数
+		h2 = {k: F.relu(v) for k, v in h2.items()}
+		# Dropout
+		h2 = {k: self._dropout(v) for k, v in h2.items()}
+
 		# 只对 address 节点做分类
-		out=self.lin(x_dict["address"])
-		#打印out的shape和类型
-		# print(f"out: {out.shape}, {out.dtype}")
+		target_h = h2["address"]
+		# 分类头（一般不加 ReLU/Norm/Dropout，直接输出 logits）
+		out = self.lin(target_h)
+
 		return out

@@ -19,8 +19,10 @@ class BTNHGV2ParameterClass():
 	weight_decay=1e-4
 	loss_threshold=0.0001
 	stoppableLoss=0.5
+	##################################
 	epochs=512
-
+	# epochs=16
+	##################################
 	# @classmethod
 	# def epochs(cls, debugMode=None):
 	# 	if debugMode is None:
