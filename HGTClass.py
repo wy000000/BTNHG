@@ -14,7 +14,7 @@ class HGTClass(nn.Module):
 				num_heads=BTNHGV2ParameterClass.num_heads,
 				num_layers=BTNHGV2ParameterClass.num_layers,
 				dropout=BTNHGV2ParameterClass.dropout,
-				doesUseProj=BTNHGV2ParameterClass.HGT_doesUseProj,
+				useProj=BTNHGV2ParameterClass.HGT_useProj,
 				batch_size=BTNHGV2ParameterClass.batch_size,
 				shuffle=BTNHGV2ParameterClass.shuffle,
 				resetSeed=BTNHGV2ParameterClass.resetSeed):
@@ -32,8 +32,12 @@ class HGTClass(nn.Module):
 		self._dropout = nn.Dropout(p=dropout)
 		self._num_heads = num_heads
 		self._num_layers = num_layers
+		self.all_y_true = None
+		self.all_probs = None
+		self.all_preds = None
+		self.training_time=None
 
-		self._DoesUseProj = doesUseProj
+		self._useProj = useProj
 		self._proj = None
 		# 提取每种节点类型的输入维度
 		self._in_channels = {
@@ -41,7 +45,7 @@ class HGTClass(nn.Module):
 			for ntype in self.heteroData.node_types}
 
 		# 输入投影
-		if self._DoesUseProj:
+		if self._useProj:
 			self._proj = nn.ModuleDict({
 				ntype: nn.Linear(self._in_channels[ntype], self._hidden_channels)
 				for ntype in self._node_types})

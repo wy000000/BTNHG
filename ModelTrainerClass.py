@@ -165,8 +165,6 @@ class ModelTrainerClass:
 		#     self._model.load_state_dict(self._best_state)
 		#     # #保存最佳模型参数
 		#     # torch.save(self._best_state, "best_model.data")
-			
-
 
 	def test(self):
 		"""使用 neighborLoader 在测试集上测试，并展示混淆矩阵"""

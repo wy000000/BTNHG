@@ -43,6 +43,10 @@ class HANClass(torch.nn.Module):
 		self._out_channels = out_channels
 		self._num_heads = num_heads
 		self._dropout = nn.Dropout(p=dropout)
+		self.all_y_true = None
+		self.all_probs = None
+		self.all_preds = None
+		self.training_time=None
 
 		self.conv1 = HANConv(
 			in_channels=-1,

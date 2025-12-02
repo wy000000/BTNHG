@@ -31,6 +31,10 @@ class RGCNClass(nn.Module):
 		self.shuffle = shuffle
 		self.resetSeed = resetSeed
 		self._dropout = nn.Dropout(p=dropout)
+		self.all_y_true = None
+		self.all_probs = None
+		self.all_preds = None
+		self.training_time=None
 
 		self._in_proj = nn.ModuleDict()
 		for node_type in self._node_types:
