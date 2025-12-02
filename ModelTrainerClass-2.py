@@ -116,7 +116,7 @@ class ModelTrainerClass:
 		
 		
 	################################################
-	def run(self):
+	def train(self):
 		"""完整训练与测试流程，带早停"""
 		print("start train")
 		time1 = time.time()
@@ -156,6 +156,8 @@ class ModelTrainerClass:
 					break
 		print(f"训练完成, epoch : {epoch}, loss: {loss:.4f}")
 		time2 = time.time()
+		self._model.training_time=time2 - time1
+
 		#打印训练用时，格式为时：分：秒
 		print(f"训练用时: {time.strftime('%H:%M:%S', time.gmtime(time2 - time1))}")
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
@@ -171,15 +173,9 @@ class ModelTrainerClass:
 		print("start test")
 		time1 = time.time()
 		self._model = self._model.to(self._device)
-		self._model.eval()
-
-		total_correct = 0
-		total_samples = 0
-		total_confidence = 0.0
-		total_batches = 0
+		self._model.eval()		
 
 		all_preds = []
-		all_labels = []
 
 		input_nodes = self._model.heteroData['address'].test_mask.nonzero(as_tuple=True)[0]
 		input_nodes = input_nodes.to(torch.long).contiguous()
@@ -192,10 +188,13 @@ class ModelTrainerClass:
 			shuffle=False
 		)
 
+		all_y_true = []
+		all_probs = []
+		all_preds = []
+
 		with torch.no_grad():
 			for batch in nbLoader:
 				batch = batch.to(self._device)
-
 				logits = self._model(batch)
 				test_mask = batch['address'].test_mask
 
@@ -206,81 +205,18 @@ class ModelTrainerClass:
 				probs = F.softmax(logits[test_mask], dim=-1)
 				pred = probs.argmax(dim=-1)
 
-				# 累积准确率和置信度
-				correct = (pred == y_true).sum().item()
-				total_correct += correct
-				total_samples += test_mask.sum().item()
-				confidences = probs.max(dim=-1).values
-				total_confidence += confidences.mean().item()
-				total_batches += 1
+				# 收集到列表
+				all_y_true.append(y_true.cpu())
+				all_probs.append(probs.cpu())
+				all_preds.append(pred.cpu())
 
-				# 收集所有预测和真实标签
-				all_preds.extend(pred.cpu().numpy())
-				all_labels.extend(y_true.cpu().numpy())
-
-		acc = total_correct / total_samples if total_samples > 0 else 0
-		avg_confidence = total_confidence / total_batches if total_batches > 0 else 0
-		balanced_acc = balanced_accuracy_score(all_labels, all_preds)		
-
-		self.showResult(acc=acc,
-						avg_confidence=avg_confidence,
-						balanced_acc=balanced_acc,
-						all_preds=all_preds,
-						all_labels=all_labels)
+		# 一次性拼接
+		self._model.all_y_true = torch.cat(all_y_true, dim=0)
+		self._model.all_probs = torch.cat(all_probs, dim=0)
+		self._model.all_preds = torch.cat(all_preds, dim=0)		
 
 		time2 = time.time()
 		print(f"测试用时: {time2 - time1}")
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
-		return acc, avg_confidence
+		return self._model
 	
-	def showResult(self, acc, avg_confidence, balanced_acc, all_preds, all_labels):
-		print(f"Accuracy: {acc:.4f}")
-		print(f"Average confidence: {avg_confidence:.4f}")
-		print(f"Balanced Accuracy: {balanced_acc:.4f}")
-		self._model.heteroDataCls.printClusterCount()
-
-		# 绘制预测与真实数量的柱状图
-		# 获取所有类别
-		classes = np.unique(np.concatenate([all_preds, all_labels]))
-
-		# 统计每个类别的预测数量和真实数量
-		pred_counts = [np.sum(np.array(all_preds) == c) for c in classes]
-		label_counts = [np.sum(np.array(all_labels) == c) for c in classes]
-
-		# 绘制柱状图
-		x = np.arange(len(classes))  # 类别索引
-		width = 0.35  # 柱子宽度
-
-		fig, ax = plt.subplots(figsize=(8, 6))
-		rects1 = ax.bar(x - width/2, pred_counts, width, label='Predicted', color='skyblue')
-		rects2 = ax.bar(x + width/2, label_counts, width, label='True', color='salmon')
-
-		# 添加标签和标题
-		ax.set_xlabel('Classes')
-		ax.set_ylabel('Counts')
-		ax.set_title('Predicted vs True Counts per Class')
-		ax.set_xticks(x)
-		ax.set_xticklabels(classes)
-		ax.legend()
-
-		# 在柱子上标注数值
-		for rects in [rects1, rects2]:
-			for rect in rects:
-				height = rect.get_height()
-				ax.annotate(f'{height}',
-							xy=(rect.get_x() + rect.get_width() / 2, height),
-							xytext=(0, 3),  # 向上偏移 3
-							textcoords="offset points",
-							ha='center', va='bottom')
-
-		plt.tight_layout()
-		plt.show()
-
-
-		# 绘制混淆矩阵
-		cm = confusion_matrix(all_labels, all_preds)
-		disp = ConfusionMatrixDisplay(confusion_matrix=cm)
-		disp.plot(cmap=plt.cm.Blues)
-		plt.title("Confusion Matrix on Test Set")
-		plt.show()
-
