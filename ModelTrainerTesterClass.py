@@ -12,7 +12,7 @@ from sklearn.metrics import balanced_accuracy_score
 import matplotlib.pyplot as plt
 import numpy as np
 
-class ModelTrainerClass:
+class ModelTrainerTesterClass:
 	def __init__(self, model,				
 				device=None,				
 				lr=BTNHGV2ParameterClass.lr,
@@ -39,7 +39,7 @@ class ModelTrainerClass:
 		else:
 			self._device = device
 		print(f"using device: {self._device}")
-		self._model = model
+		self._model = model		
 		# self._model.heteroData = self._model.heteroData.to(self._device)
 		# self._train_loader = train_loader
 		# self._test_loader = test_loader
@@ -49,9 +49,13 @@ class ModelTrainerClass:
 		self._patience = patience
 		self._lr = lr
 		self._weight_decay=weight_decay
+
+		###############设置优化器#############
 		self._optimizer = torch.optim.Adam(self._model.parameters(),
 										lr=self._lr,
 										weight_decay=self._weight_decay)
+		#####################################
+		
 		# # 早停相关变量
 		self._loss_threshold = loss_threshold
 		self._stoppableLoss=stoppableLoss
@@ -156,10 +160,11 @@ class ModelTrainerClass:
 					break
 		print(f"训练完成, epoch : {epoch}, loss: {loss:.4f}")
 		time2 = time.time()
-		self._model.training_time=time2 - time1
 
 		#打印训练用时，格式为时：分：秒
-		print(f"训练用时: {time.strftime('%H:%M:%S', time.gmtime(time2 - time1))}")
+		trainTimeStr=time.strftime('%H:%M:%S', time.gmtime(time2 - time1))
+		self._model.training_time=trainTimeStr
+		print(f"训练用时: {trainTimeStr}")
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
 		# # 恢复最佳模型参数
@@ -218,5 +223,5 @@ class ModelTrainerClass:
 		time2 = time.time()
 		print(f"测试用时: {time2 - time1}")
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
-		return self._model
+
 	

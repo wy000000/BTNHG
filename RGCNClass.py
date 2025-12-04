@@ -7,8 +7,9 @@ from torch_geometric.nn import RGCNConv
 # from torch_geometric.utils import to_homogeneous
 from BTNHGV2HeteroDataClass import BTNHGV2HeteroDataClass
 from BTNHGV2ParameterClass import BTNHGV2ParameterClass
+from ExtendedNNModule import ExtendedNNModule
 
-class RGCNClass(nn.Module):
+class RGCNClass(ExtendedNNModule):
 	"""
 	RGCN 异构图分类器 —— 只对 'address' 节点中 train_mask==True 的节点进行分类
 	"""
@@ -31,10 +32,6 @@ class RGCNClass(nn.Module):
 		self.shuffle = shuffle
 		self.resetSeed = resetSeed
 		self._dropout = nn.Dropout(p=dropout)
-		self.all_y_true = None
-		self.all_probs = None
-		self.all_preds = None
-		self.training_time=None
 
 		self._in_proj = nn.ModuleDict()
 		for node_type in self._node_types:

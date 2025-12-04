@@ -3,10 +3,14 @@ import math
 
 #定义一个参数类，保存程序中用到的各种参数
 class BTNHGV2ParameterClass():
-	version="25.12.1.0"
-	# debugMode=False
+	version="25.12.4.0"
 	dataPath=r"D:\BTNHG\BTNHGV2"
 	resultFolderName="result"
+	extendedAttributesFileName="extendedAttributes.txt"
+	y_true_preds_probsFileName="y_true_preds_probs.xlsx"
+	modelStateDictFileName="model.state_dict.pt"
+	fullModelFileName="fullModel.pt"
+
 	train_size=0.8
 	shuffle=True
 	batch_size=4096
@@ -29,7 +33,7 @@ class BTNHGV2ParameterClass():
 	HGT_useProj=True
 
 	##################################
-	epochs=512
+	epochs=8
 	# epochs=16
 	##################################
 	# @classmethod
@@ -40,12 +44,9 @@ class BTNHGV2ParameterClass():
 	# 		return int(cls._epochs / 10)   # 调试模式缩短为原来的 1/10
 	# 	return int(cls._epochs)
 
-	saveBTNV2ParameterClass=True
-	saveModel=False
+	save=True
 	saveModelStateDict=True
-	saveTestY=True
-	saveEvaluationMetrics=True
-	
+	saveFullModel=False	
 
 	_rng = np.random.default_rng(randSeed)
 	# 生成随机数

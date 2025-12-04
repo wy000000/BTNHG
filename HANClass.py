@@ -5,9 +5,12 @@ from torch_geometric.nn import HANConv
 from torch_geometric.loader import NeighborLoader
 from BTNHGV2ParameterClass import BTNHGV2ParameterClass
 from BTNHGV2HeteroDataClass import BTNHGV2HeteroDataClass
+from ExtendedNNModule import ExtendedNNModule
+# from ModelTrainerTesterClass import ModelTrainerTesterClass
 
-class HANClass(torch.nn.Module):	
-	def __init__(self, heteroDataCls: BTNHGV2HeteroDataClass,
+class HANClass(ExtendedNNModule):
+	def __init__(self,
+			  	heteroDataCls: BTNHGV2HeteroDataClass,
 				hidden_channels=BTNHGV2ParameterClass.hidden_channels,
 				out_channels=BTNHGV2ParameterClass.out_channels,
 				num_heads=BTNHGV2ParameterClass.num_heads,
@@ -29,24 +32,17 @@ class HANClass(torch.nn.Module):
 		"""
 		super().__init__()
 		self.heteroDataCls = heteroDataCls
-		# self.train_mask, self.test_mask = \
 		self.heteroDataCls.getTrainTestMask()
 		self.heteroData = heteroDataCls.heteroData
-		# self.accumulation_steps = accumulation_steps
-		self.batch_size = batch_size
-		self.shuffle = shuffle
-		self.resetSeed = resetSeed
 		self._metadata = self.heteroData.metadata()
-		#统计self.heteroData["address"].y中不等于-1的类别的数量
 		self._num_classes = self.heteroData["address"].y.unique().numel()-1
 		self._hidden_channels = hidden_channels
 		self._out_channels = out_channels
 		self._num_heads = num_heads
 		self._dropout = nn.Dropout(p=dropout)
-		self.all_y_true = None
-		self.all_probs = None
-		self.all_preds = None
-		self.training_time=None
+		self.batch_size = batch_size
+		self.shuffle = shuffle
+		self.resetSeed = resetSeed
 
 		self.conv1 = HANConv(
 			in_channels=-1,
