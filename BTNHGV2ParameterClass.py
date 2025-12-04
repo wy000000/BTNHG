@@ -33,16 +33,8 @@ class BTNHGV2ParameterClass():
 	HGT_useProj=True
 
 	##################################
-	epochs=8
-	# epochs=16
+	epochs=512
 	##################################
-	# @classmethod
-	# def epochs(cls, debugMode=None):
-	# 	if debugMode is None:
-	# 		debugMode=cls.debugMode
-	# 	if debugMode:
-	# 		return int(cls._epochs / 10)   # 调试模式缩短为原来的 1/10
-	# 	return int(cls._epochs)
 
 	save=True
 	saveModelStateDict=True
