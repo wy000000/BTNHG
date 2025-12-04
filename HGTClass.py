@@ -5,8 +5,9 @@ from torch_geometric.nn import HGTConv
 from torch_geometric.data import HeteroData
 from BTNHGV2ParameterClass import BTNHGV2ParameterClass
 from BTNHGV2HeteroDataClass import BTNHGV2HeteroDataClass
+from ExtendedNNModule import ExtendedNNModule
 
-class HGTClass(nn.Module):
+class HGTClass(ExtendedNNModule):
 	def __init__(self,
 				heteroDataCls: BTNHGV2HeteroDataClass,
 				hidden_channels=BTNHGV2ParameterClass.hidden_channels,
@@ -32,10 +33,6 @@ class HGTClass(nn.Module):
 		self._dropout = nn.Dropout(p=dropout)
 		self._num_heads = num_heads
 		self._num_layers = num_layers
-		self.all_y_true = None
-		self.all_probs = None
-		self.all_preds = None
-		self.training_time=None
 
 		self._useProj = useProj
 		self._proj = None

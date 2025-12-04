@@ -9,24 +9,33 @@ import torch.nn.functional as F
 import torch.nn as nn
 from BTNHGV2ParameterClass import BTNHGV2ParameterClass
 from BTNHGV2HeteroDataClass import BTNHGV2HeteroDataClass
+from ModelTrainerTesterClass import ModelTrainerTesterClass
+from HANClass import HANClass
+from HGTClass import HGTClass
+from RGCNClass import RGCNClass
+from resultAnalysisClass import resultAnalysisClass
+
 time2 = time.time()
 print("import used time: ", time2 - time1)
 print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
-
 heteroDataClass=BTNHGV2HeteroDataClass()
-
-from ModelTrainerClass import ModelTrainerClass
-from HANClass import HANClass
-from HGTClass import HGTClass
-from RGCNClass import RGCNClass
 
 gmodel=HANClass(heteroDataCls=heteroDataClass)
 # gmodel=HGTClass(heteroDataCls=heteroDataClass)
 # gmodel=RGCNClass(heteroDataCls=heteroDataClass)
 
-trainer=ModelTrainerClass(model=gmodel)
+trainer=ModelTrainerTesterClass(model=gmodel)
 
 trainer.train()
 
 trainer.test()
+
+resultCls=resultAnalysisClass(gmodel)
+
+# resultCls.showEvaluationMetrics()
+# resultCls.showExtendedAttributes()
+# resultCls.plot_true_pred_counts()
+# resultCls.plot_confusion_matrix()
+
+resultCls.save()
