@@ -3,7 +3,7 @@ import math
 
 #定义一个参数类，保存程序中用到的各种参数
 class BTNHGV2ParameterClass():
-	version="25.12.4.0"
+	version="2025.12.4.0"
 	dataPath=r"D:\BTNHG\BTNHGV2"
 	resultFolderName="result"
 	extendedAttributesFileName="extendedAttributes.txt"

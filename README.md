@@ -7,6 +7,22 @@ BTNHGV2.py is main file.
 
 BTNHGV2ParameterClass.py stores parameters.
 
+version 2025.12.5.0
+
+five files can be saved:
+
+	BTNHGV2ParameterClass.py(every parameter setting),
+
+	extendedAttributes.txt(various analysis metrics and environment configuration),
+
+	y_true_preds_probs.xlsx(model test outputs),
+
+	model.state_dict.pt,
+
+	fullModel.pt
+
+HAN, HGT and RGCN methods are integrated.
+
 code:
 
 heteroDataClass=BTNHGV2HeteroDataClass()
