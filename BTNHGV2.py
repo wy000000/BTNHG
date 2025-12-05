@@ -21,8 +21,8 @@ print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
 heteroDataClass=BTNHGV2HeteroDataClass()
 
-gmodel=HANClass(heteroDataCls=heteroDataClass)
-# gmodel=HGTClass(heteroDataCls=heteroDataClass)
+# gmodel=HANClass(heteroDataCls=heteroDataClass)
+gmodel=HGTClass(heteroDataCls=heteroDataClass)
 # gmodel=RGCNClass(heteroDataCls=heteroDataClass)
 
 trainer=ModelTrainerTesterClass(model=gmodel)

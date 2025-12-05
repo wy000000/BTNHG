@@ -66,33 +66,7 @@ class BTNHGV2HeteroDataClass(Dataset):
 		# 1. 读取数据
 		print("start read data")
 		time1 = time.time()
-		###########################################读取前10%数据，会出错。
-		# if debugMode:		
-		# 	def _get_csv_row_count(file_path):
-		# 		with open(file_path, 'r', encoding='utf-8') as f:
-		# 			reader = csv.reader(f)
-		# 			# 跳过表头
-		# 			next(reader, None)
-		# 			# 计算数据行数
-		# 			return sum(1 for row in reader)
-		# 	# 读取前10%数据
-		# 	addr_file_path = os.path.join(dataPath, "addressFeature.csv")
-		# 	addr_rows = _get_csv_row_count(addr_file_path)
-		# 	addr_feat_df = pd.read_csv(addr_file_path, nrows=int(addr_rows * 0.1))
-
-		# 	coin_file_path = os.path.join(dataPath, "coinFeature.csv")
-		# 	coin_rows = _get_csv_row_count(coin_file_path)
-		# 	coin_feat_df = pd.read_csv(coin_file_path, nrows=int(coin_rows * 0.1))
-
-		# 	tx_file_path = os.path.join(dataPath, "TxFeature.csv")
-		# 	tx_rows = _get_csv_row_count(tx_file_path)
-		# 	tx_feat_df = pd.read_csv(tx_file_path, nrows=int(tx_rows * 0.1))
-
-		# 	edge_file_path = os.path.join(dataPath, "hgEdgeV2.csv")
-		# 	edge_rows = _get_csv_row_count(edge_file_path)
-		# 	edge_df = pd.read_csv(edge_file_path, nrows=int(edge_rows * 0.1))
-		##################################################
-		# else:
+		
 		#读取所有数据
 		addr_feat_df = pd.read_csv(os.path.join(dataPath, "addressFeature.csv"))
 		coin_feat_df = pd.read_csv(os.path.join(dataPath, "coinFeature.csv"))
