@@ -3,7 +3,7 @@ import math
 
 #定义一个参数类，保存程序中用到的各种参数
 class BTNHGV2ParameterClass():
-	version="2025.12.5.1"
+	version="2025.12.5.2"
 	########### 训练
 	epochs=512
 	epochsDisplay=4
