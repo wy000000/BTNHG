@@ -14,6 +14,9 @@ from HANClass import HANClass
 from HGTClass import HGTClass
 from RGCNClass import RGCNClass
 from resultAnalysisClass import resultAnalysisClass
+from SAGEClass import SAGEClass
+# from GATClass import GATClass
+# from GraphConvClass import GraphConvClass
 
 time2 = time.time()
 print("import used time: ", time2 - time1)
@@ -22,8 +25,11 @@ print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 heteroDataClass=BTNHGV2HeteroDataClass()
 
 # gmodel=HANClass(heteroDataCls=heteroDataClass)
-gmodel=HGTClass(heteroDataCls=heteroDataClass)
+# gmodel=HGTClass(heteroDataCls=heteroDataClass)
 # gmodel=RGCNClass(heteroDataCls=heteroDataClass)
+gmodel=SAGEClass(heteroDataCls=heteroDataClass)
+# gmodel=GATClass(heteroDataCls=heteroDataClass)
+# gmodel=GraphConvClass(heteroDataCls=heteroDataClass)
 
 trainer=ModelTrainerTesterClass(model=gmodel)
 

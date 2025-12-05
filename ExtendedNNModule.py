@@ -9,6 +9,7 @@ class ExtendedNNModule(nn.Module):
 		self.modelName=None
 		self.training_time=None
 		self.accuracy=None
+		self.best_epoch_loss=None
 		self.evaluationMetrics=None
 		self.env_info=None
 		self.all_y_true = None
@@ -20,11 +21,9 @@ class ExtendedNNModule(nn.Module):
 			"modelName": self.modelName,
 			"training_time": self.training_time,
 			"accuracy": self.accuracy,
+			"best_epoch_loss": self.best_epoch_loss,
 			"evaluationMetrics": self.evaluationMetrics,
 			"env_info": self.env_info,
-			# "all_y_true": self.all_y_true,
-			# "all_probs": self.all_probs,
-			# "all_preds": self.all_preds,
 		}
 		def to_serializable(val):
 			# 处理 numpy 和 torch 类型
