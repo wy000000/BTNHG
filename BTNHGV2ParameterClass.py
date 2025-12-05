@@ -3,7 +3,7 @@ import math
 
 #定义一个参数类，保存程序中用到的各种参数
 class BTNHGV2ParameterClass():
-	version="2025.12.5.2"
+	version="2025.12.5.3"
 	########### 训练
 	epochs=512
 	epochsDisplay=4
@@ -17,6 +17,7 @@ class BTNHGV2ParameterClass():
 	dropout=0.35
 	num_layers=2
 	HGT_useProj=True
+
 	########### 数据集
 	train_size=0.8
 	shuffle=True

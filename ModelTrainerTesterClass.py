@@ -151,8 +151,11 @@ class ModelTrainerTesterClass:
 		self._model.training_time=trainTimeStr
 		print(f"训练完成, epoch : {epoch}, loss: {loss:.4f}, used time: {trainTimeStr}")
 		if earlyStopping.restore_best_weights(self._model):
-			print(f"restore best model in epoch {earlyStopping.best_epoch},"
-		 			+f" best loss: {earlyStopping.best_loss:.4f}")
+			best_epoch_loss=(f"best model in epoch {earlyStopping.best_epoch},"
+							+f" best loss: {earlyStopping.best_loss:.4f}")
+			self._model.best_epoch_loss=best_epoch_loss
+			print("restore "+best_epoch_loss)
+		self._model.best_epoch_loss=best_epoch_loss
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
 	def test(self):
