@@ -9,7 +9,9 @@ BTNHGV2ParameterClass.py stores parameters.
 
 EarlyStoppingClass.py implements early stopping mechanism.
 
-version 2025.12.5.1
+version 2025.12.5.3
+
+SAGE, HAN, HGT and RGCN methods are integrated.
 
 five files can be saved:
 
@@ -23,7 +25,6 @@ five files can be saved:
 
 	fullModel.pt
 
-HAN, HGT and RGCN methods are integrated.
 
 code:
 
