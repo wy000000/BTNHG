@@ -7,7 +7,9 @@ BTNHGV2.py is main file.
 
 BTNHGV2ParameterClass.py stores parameters.
 
-version 2025.12.5.0
+EarlyStoppingClass.py implements early stopping mechanism.
+
+version 2025.12.5.1
 
 five files can be saved:
 
