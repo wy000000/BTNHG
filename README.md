@@ -35,23 +35,23 @@ six files can be saved:
 
 	"model.state_dict.pt",
 
-	"fullModel.pt"
+	"fullModel.pt".
 
 sample code:
 
 	heteroDataClass=BTNHGV2HeteroDataClass()
 
-	\# gmodel=HANClass(heteroDataCls=heteroDataClass)
+	# gmodel=HANClass(heteroDataCls=heteroDataClass)
 
-	\# gmodel=HGTClass(heteroDataCls=heteroDataClass)
+	# gmodel=HGTClass(heteroDataCls=heteroDataClass)
 
-	\# gmodel=RGCNClass(heteroDataCls=heteroDataClass)
+	# gmodel=RGCNClass(heteroDataCls=heteroDataClass)
 
 	gmodel=SAGEClass(heteroDataCls=heteroDataClass)
 
-	\# gmodel=GATClass(heteroDataCls=heteroDataClass)
+	# gmodel=GATClass(heteroDataCls=heteroDataClass)
 
-	\# gmodel=GraphConvClass(heteroDataCls=heteroDataClass)
+	# gmodel=GraphConvClass(heteroDataCls=heteroDataClass)
 
 	trainer=ModelTrainerTesterClass(model=gmodel)
 
@@ -61,13 +61,13 @@ sample code:
 
 	resultCls=resultAnalysisClass(gmodel)
 
-	\# resultCls.showEvaluationMetrics()
+	# resultCls.showEvaluationMetrics()
 
-	\# resultCls.showExtendedAttributes()
+	# resultCls.showExtendedAttributes()
 
-	\# resultCls.plot_true_pred_counts()
+	# resultCls.plot_true_pred_counts()
 
-	\# resultCls.plot_confusion_matrix()
+	# resultCls.plot_confusion_matrix()
 
 	resultCls.save()
 
