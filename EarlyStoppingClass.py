@@ -4,14 +4,14 @@ import copy
 
 class EarlyStoppingClass:
 	def __init__(self,
-				patience=BTNHGV2ParameterClass.earlyStoppingPatience,
+				patience=BTNHGV2ParameterClass.patience,
 				min_delta=BTNHGV2ParameterClass.min_delta,
 				stopableEpoch=BTNHGV2ParameterClass.stopableEpoch):
 		self.patience = patience
 		self.min_delta = min_delta
 		self.stopableEpoch=stopableEpoch
 		self.best_loss = None
-		self.best_epoch = None
+		self.best_epoch = 0
 		self.counter = 0
 		self.early_stop = False
 		self.best_model_state = None  # 内存保存

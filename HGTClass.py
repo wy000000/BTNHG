@@ -20,6 +20,9 @@ class HGTClass(ExtendedNNModule):
 				shuffle=BTNHGV2ParameterClass.shuffle,
 				resetSeed=BTNHGV2ParameterClass.resetSeed):
 		super().__init__()
+		self.batch_size=batch_size
+		self.shuffle=shuffle
+		self.resetSeed=resetSeed
 		self.heteroDataCls = heteroDataCls
 		self.heteroDataCls.getTrainTestMask()
 		self.heteroData = heteroDataCls.heteroData
@@ -27,9 +30,7 @@ class HGTClass(ExtendedNNModule):
 		self._out_channels = out_channels
 		self._node_types, self._edge_types = self._metadata
 		self._hidden_channels = hidden_channels
-		self.batch_size=batch_size
-		self.shuffle=shuffle
-		self.resetSeed=resetSeed
+
 		self._dropout = nn.Dropout(p=dropout)
 		self._num_heads = num_heads
 		self._num_layers = num_layers

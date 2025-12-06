@@ -3,24 +3,25 @@ import math
 
 #定义一个参数类，保存程序中用到的各种参数
 class BTNHGV2ParameterClass():
-	version="2025.12.6.0"
+	version="2025.12.6.1"
 	########### 训练
 	epochs=512
 	epochsDisplay=4
+	lr=0.01
+	# max_norm=100000000.0
+	dropout=0.35
+	weight_decay=1e-4
 	useTrainWeight=False
 
 	########### 早停
-	earlyStoppingPatience=32
-	min_delta=0.001
+	patience=32
+	min_delta=0.01
 	stopableEpoch=128
 
-	########### 模型
-	lr=0.01
-	weight_decay=1e-4
+	########### 模型	
 	hidden_channels=32
 	out_channels=32
-	num_heads=4
-	dropout=0.35
+	num_heads=4	
 	num_layers=2
 	HGT_useProj=True
 

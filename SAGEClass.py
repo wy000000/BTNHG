@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import HeteroConv, GCNConv, SAGEConv, GATConv
+from torch_geometric.nn import HeteroConv, SAGEConv
 from ExtendedNNModule import ExtendedNNModule
 from BTNHGV2HeteroDataClass import BTNHGV2HeteroDataClass
 from BTNHGV2ParameterClass import BTNHGV2ParameterClass
