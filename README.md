@@ -25,7 +25,7 @@ code files：
 
 six files can be saved:
 
-	"BTNHGV2ParameterClass.py"(every parameter setting),
+	"BTNHGV2ParameterClass.py"(parameters' setting),
 
 	"extendedAttributes.txt"(various analysis metrics and environment configuration),
 
