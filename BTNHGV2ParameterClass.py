@@ -3,11 +3,17 @@ import math
 
 #定义一个参数类，保存程序中用到的各种参数
 class BTNHGV2ParameterClass():
-	version="2025.12.5.3"
+	version="2025.12.6.0"
 	########### 训练
 	epochs=512
 	epochsDisplay=4
 	useTrainWeight=False
+
+	########### 早停
+	earlyStoppingPatience=32
+	min_delta=0.001
+	stopableEpoch=128
+
 	########### 模型
 	lr=0.01
 	weight_decay=1e-4
@@ -24,14 +30,12 @@ class BTNHGV2ParameterClass():
 	batch_size=4096
 	randSeed=42
 	resetSeed=False
-	########### 早停
-	earlyStoppingPatience=32
-	min_delta=0.001
-	stopableEpoch=128
+
 	########### 存储
 	dataPath=r"D:\BTNHG\BTNHGV2"
 	resultFolderName="result"
 	extendedAttributesFileName="extendedAttributes.txt"
+	epoch_loss_listFileName="epoch_loss_list.xlsx"
 	y_true_preds_probsFileName="y_true_preds_probs.xlsx"
 	modelStateDictFileName="model.state_dict.pt"
 	fullModelFileName="fullModel.pt"

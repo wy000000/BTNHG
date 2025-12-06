@@ -131,10 +131,14 @@ class ModelTrainerTesterClass:
 		epoch=0
 		epochDisplay=BTNHGV2ParameterClass.epochsDisplay
 		earlyStopping=EarlyStoppingClass()
+		epoch_loss_list=[]
 
 		for epoch in range(1, self._epochs + 1):
+			## 训练一个 epoch
 			loss = self._train_one_epoch()
+			#epoch间隔显示
 			if(epoch % epochDisplay == 0):
+				epoch_loss_list.append((epoch, loss))
 				trainTimeStr=time.strftime('%H:%M:%S', time.gmtime(time.time() - time1))
 				print(f"Epoch {epoch:3d}"
 		  				+f" | loss: {loss:.4f}"
@@ -149,13 +153,18 @@ class ModelTrainerTesterClass:
 		time2 = time.time()
 		trainTimeStr=time.strftime('%H:%M:%S', time.gmtime(time2 - time1))
 		self._model.training_time=trainTimeStr
-		print(f"训练完成, epoch : {epoch}, loss: {loss:.4f}, used time: {trainTimeStr}")
+		#if epoch!=epoch_loss_list的最后一个
+		if epoch!=epoch_loss_list[-1][0]-1:
+			epoch_loss_list.append((epoch, loss))
+		self._model.epoch_loss_list=epoch_loss_list
+		endEpochLossStr=(f"Training completed, epoch : {epoch}, loss: {loss:.4f}")
+		self._model.end_epoch_loss=endEpochLossStr
+		print(f"{endEpochLossStr}, used time: {trainTimeStr}")
 		if earlyStopping.restore_best_weights(self._model):
 			best_epoch_loss=(f"best model in epoch {earlyStopping.best_epoch},"
 							+f" best loss: {earlyStopping.best_loss:.4f}")
 			self._model.best_epoch_loss=best_epoch_loss
 			print("restore "+best_epoch_loss)
-		self._model.best_epoch_loss=best_epoch_loss
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
 	def test(self):

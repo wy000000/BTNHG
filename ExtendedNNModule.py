@@ -9,9 +9,11 @@ class ExtendedNNModule(nn.Module):
 		self.modelName=None
 		self.training_time=None
 		self.accuracy=None
+		self.end_epoch_loss=None
 		self.best_epoch_loss=None
 		self.evaluationMetrics=None
 		self.env_info=None
+		self.epoch_loss_list=None
 		self.all_y_true = None
 		self.all_probs = None
 		self.all_preds = None
@@ -21,6 +23,7 @@ class ExtendedNNModule(nn.Module):
 			"modelName": self.modelName,
 			"training_time": self.training_time,
 			"accuracy": self.accuracy,
+			"end_epoch_loss": self.end_epoch_loss,
 			"best_epoch_loss": self.best_epoch_loss,
 			"evaluationMetrics": self.evaluationMetrics,
 			"env_info": self.env_info,

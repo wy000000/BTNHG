@@ -9,15 +9,17 @@ BTNHGV2ParameterClass.py stores parameters.
 
 EarlyStoppingClass.py implements early stopping mechanism.
 
-version 2025.12.5.3
+version="2025.12.6.0"
 
 SAGE, HAN, HGT and RGCN methods are integrated.
 
-five files can be saved:
+six files can be saved:
 
 	BTNHGV2ParameterClass.py(every parameter setting),
 
 	extendedAttributes.txt(various analysis metrics and environment configuration),
+
+	epoch_loss_list.xlsx(epoch loss curve),
 
 	y_true_preds_probs.xlsx(model test outputs),
 
