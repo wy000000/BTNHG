@@ -31,6 +31,9 @@ class HANClass(ExtendedNNModule):
 			resetSeed=BTNHGV2ParameterClass.resetSeed
 		"""
 		super().__init__()
+		self.batch_size = batch_size
+		self.shuffle = shuffle
+		self.resetSeed = resetSeed
 		self.heteroDataCls = heteroDataCls
 		self.heteroDataCls.getTrainTestMask()
 		self.heteroData = heteroDataCls.heteroData
@@ -40,9 +43,6 @@ class HANClass(ExtendedNNModule):
 		self._out_channels = out_channels
 		self._num_heads = num_heads
 		self._dropout = nn.Dropout(p=dropout)
-		self.batch_size = batch_size
-		self.shuffle = shuffle
-		self.resetSeed = resetSeed
 
 		self.conv1 = HANConv(
 			in_channels=-1,

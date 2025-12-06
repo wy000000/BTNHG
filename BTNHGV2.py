@@ -15,7 +15,7 @@ from HGTClass import HGTClass
 from RGCNClass import RGCNClass
 from resultAnalysisClass import resultAnalysisClass
 from SAGEClass import SAGEClass
-# from GATClass import GATClass
+from GATClass import GATClass
 # from GraphConvClass import GraphConvClass
 
 time2 = time.time()

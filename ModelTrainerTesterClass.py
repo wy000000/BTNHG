@@ -19,7 +19,7 @@ class ModelTrainerTesterClass:
 				lr=BTNHGV2ParameterClass.lr,
 				weight_decay=BTNHGV2ParameterClass.weight_decay,
 				epochs=BTNHGV2ParameterClass.epochs,
-				patience=BTNHGV2ParameterClass.earlyStoppingPatience,
+				patience=BTNHGV2ParameterClass.patience,
 				# loss_threshold=BTNHGV2ParameterClass.loss_threshold,
 				# stoppableLoss=BTNHGV2ParameterClass.stoppableLoss,
 				useTrainWeight=BTNHGV2ParameterClass.useTrainWeight,
@@ -43,22 +43,19 @@ class ModelTrainerTesterClass:
 		print(f"using device: {self._device}")
 		self._model = model		
 		self._epochs = epochs
-		self._useTrainWeight=useTrainWeight
-
-		self._patience = patience
+		self._useTrainWeight=useTrainWeight	
 		self._lr = lr
 		self._weight_decay=weight_decay
 
 		###############设置优化器#############
-		self._optimizer = torch.optim.Adam(self._model.parameters(),
+		self._optimizer = torch.optim.AdamW(self._model.parameters(),
 										lr=self._lr,
 										weight_decay=self._weight_decay)
 		#####################################
 		
 		# # 早停相关变量
 		self._min_delta=min_delta
-		self._earlyStoppingPatience=patience
-		
+		self._patience = patience		
 		# self._loss_threshold = loss_threshold
 		# self._stoppableLoss=stoppableLoss
 		# self._best_acc = 0.0
@@ -85,6 +82,7 @@ class ModelTrainerTesterClass:
 		self._model.train()
 		total_loss = 0
 		total_batches = 0
+		self.modelName=self._model.__class__.__name__
 
 
 		# 遍历 neighborLoader 提供的批次
@@ -110,6 +108,11 @@ class ModelTrainerTesterClass:
 				trainWeight=None
 			loss = F.cross_entropy(input=pred, target=target, weight=trainWeight)
 			loss.backward()
+			# for name, param in self._model.named_parameters():
+			# 	if param.grad is not None:
+			# 		print(f"{name} grad norm: {param.grad.data.norm(2).item()}")
+			# torch.nn.utils.clip_grad_norm_(self._model.parameters(),
+			# 								max_norm=BTNHGV2ParameterClass.max_norm)
 			self._optimizer.step()
 
 			total_loss += loss.item()
@@ -130,24 +133,28 @@ class ModelTrainerTesterClass:
 		counter=0
 		epoch=0
 		epochDisplay=BTNHGV2ParameterClass.epochsDisplay
-		earlyStopping=EarlyStoppingClass()
+		earlyStopping=EarlyStoppingClass()		
 		epoch_loss_list=[]
 
 		for epoch in range(1, self._epochs + 1):
 			## 训练一个 epoch
 			loss = self._train_one_epoch()
+
+			stop=earlyStopping(loss, self._model, epoch)
+
 			#epoch间隔显示
-			if(epoch % epochDisplay == 0):
+			if(epoch % epochDisplay == 0 or epoch==1):
 				epoch_loss_list.append((epoch, loss))
 				trainTimeStr=time.strftime('%H:%M:%S', time.gmtime(time.time() - time1))
-				print(f"Epoch {epoch:3d}"
+				print(f"{self.modelName} | Epoch {epoch:3d}"
 		  				+f" | loss: {loss:.4f}"
 		  				+f" | best Loss: {earlyStopping.best_loss:.4f}"
 						+f" | patience: {earlyStopping.counter:2d}"
-						+f" | used time: {trainTimeStr}")	
+						+f" | used time: {trainTimeStr}")
+				
 			# 早停逻辑：监控测试集损失
-			if earlyStopping(loss, self._model, epoch):
-				print(f"早停触发！")
+			if stop:
+				print(f"early stopping at epoch {epoch}.")
 				break
 
 		time2 = time.time()

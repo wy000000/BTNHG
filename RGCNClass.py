@@ -23,14 +23,14 @@ class RGCNClass(ExtendedNNModule):
 				shuffle=BTNHGV2ParameterClass.shuffle,
 				resetSeed=BTNHGV2ParameterClass.resetSeed):		
 		super().__init__()
+		self.batch_size = batch_size
+		self.shuffle = shuffle
+		self.resetSeed = resetSeed
 		self.heteroDataCls = heteroDataCls
 		self.heteroDataCls.getTrainTestMask()		
 		self.heteroData = heteroDataCls.heteroData
 		self._num_layers = num_layers
 		self._node_types = list(self.heteroData.node_types)
-		self.batch_size = batch_size
-		self.shuffle = shuffle
-		self.resetSeed = resetSeed
 		self._dropout = nn.Dropout(p=dropout)
 
 		self._in_proj = nn.ModuleDict()
