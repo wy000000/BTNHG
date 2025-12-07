@@ -260,7 +260,7 @@ class resultAnalysisClass:
 	
 	def _saveBTNHGV2ParameterClass(self):
 		#复制BTNHGV2ParameterClass.py 到 folderPath
-		fileName=BTNHGV2ParameterClass.__name__+".py"
+		fileName=BTNHGV2ParameterClass.__name__+".txt"
 		filePath=os.path.join(self.methodFolderPath, fileName)
 
 		shutil.copyfile(fileName, filePath)
@@ -317,7 +317,6 @@ class resultAnalysisClass:
 
 		print(f"{fileName}已保存")
 		return filePath
-
 
 	def _saveY_true_preds_probs(self):
 		fileName = BTNHGV2ParameterClass.y_true_preds_probsFileName

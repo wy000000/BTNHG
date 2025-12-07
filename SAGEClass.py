@@ -13,14 +13,8 @@ class SAGEClass(ExtendedNNModule):
 				out_channels=BTNHGV2ParameterClass.out_channels,
 				num_layers=BTNHGV2ParameterClass.num_layers,
 				num_heads=BTNHGV2ParameterClass.num_heads,
-				batch_size=BTNHGV2ParameterClass.batch_size,
-				shuffle=BTNHGV2ParameterClass.shuffle,
-				resetSeed=BTNHGV2ParameterClass.resetSeed,
 				dropout=BTNHGV2ParameterClass.dropout):
 		super().__init__()
-		self.batch_size = batch_size
-		self.shuffle = shuffle
-		self.resetSeed = resetSeed
 		self._dropout = nn.Dropout(p=dropout)
 		self.heteroDataCls = heteroDataCls
 		self.heteroDataCls.getTrainTestMask()

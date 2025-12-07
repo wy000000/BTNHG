@@ -15,14 +15,8 @@ class HGTClass(ExtendedNNModule):
 				num_heads=BTNHGV2ParameterClass.num_heads,
 				num_layers=BTNHGV2ParameterClass.num_layers,
 				dropout=BTNHGV2ParameterClass.dropout,
-				useProj=BTNHGV2ParameterClass.HGT_useProj,
-				batch_size=BTNHGV2ParameterClass.batch_size,
-				shuffle=BTNHGV2ParameterClass.shuffle,
-				resetSeed=BTNHGV2ParameterClass.resetSeed):
+				useProj=BTNHGV2ParameterClass.HGT_useProj):
 		super().__init__()
-		self.batch_size=batch_size
-		self.shuffle=shuffle
-		self.resetSeed=resetSeed
 		self.heteroDataCls = heteroDataCls
 		self.heteroDataCls.getTrainTestMask()
 		self.heteroData = heteroDataCls.heteroData
