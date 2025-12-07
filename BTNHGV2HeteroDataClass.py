@@ -12,7 +12,7 @@ from torch_geometric.data import HeteroData
 from torch.utils.data import TensorDataset
 from torch_geometric.loader import DataLoader, NeighborLoader
 from torch_geometric.data import Dataset
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.utils import check_random_state
 from BTNHGV2ParameterClass import BTNHGV2ParameterClass
 from sklearn.utils.class_weight import compute_class_weight
@@ -44,7 +44,7 @@ class BTNHGV2HeteroDataClass(Dataset):
 		self._tx_id_map = None
 		self._cluster_id_map = None
 		self.class_weight=None #在getTrainTestMask()中计算
-		self.cluster_count=None
+		self.cluster_count=None		
 		# self.debugMode=debugMode
 
 		if heteroData is not None:
@@ -235,8 +235,8 @@ class BTNHGV2HeteroDataClass(Dataset):
 		return total_edges
 	
 	def getTrainTestMask(self, train_size=BTNHGV2ParameterClass.train_size,
-	                     shuffle=BTNHGV2ParameterClass.shuffle,
-	                     resetSeed=BTNHGV2ParameterClass.resetSeed):				
+							shuffle=BTNHGV2ParameterClass.shuffle,
+							resetSeed=BTNHGV2ParameterClass.resetSeed):	
 		"""
 		为异构图数据中的address节点生成训练集和测试集掩码。
 		同时生成种类权重。
@@ -281,10 +281,10 @@ class BTNHGV2HeteroDataClass(Dataset):
 
 		# 划分训练集和测试集
 		train_indices, test_indices = train_test_split(
-			np.arange(num_labeled),
-			train_size=train_size,
-			stratify=labels,
-			random_state=randSeed)
+												np.arange(num_labeled),
+												train_size=train_size,
+												stratify=labels,
+												random_state=randSeed)
 
 		# 创建 mask
 		train_mask = torch.zeros(self.heteroData['address'].num_nodes, dtype=torch.bool)
@@ -304,12 +304,45 @@ class BTNHGV2HeteroDataClass(Dataset):
 
 		time2 = time.time()
 		#打印划分信息
-		print("划分数据集信息")
-		print(f"训练集大小: {len(train_indices)} ({len(train_indices)/num_labeled:.2%})")
-		print(f"测试集大小: {len(test_indices)} ({len(test_indices)/num_labeled:.2%})")
-		print(f"划分数据集用时: {time2 - time1}")
-		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
+		# print(f"训练集大小: {len(train_indices)} ({len(train_indices)/num_labeled:.2%})")
+		# print(f"测试集大小: {len(test_indices)} ({len(test_indices)/num_labeled:.2%})")
+		# print(f"划分数据集用时: {time2 - time1}")
+		# print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
+		print("划分数据集完成")
 		return train_mask, test_mask
+	
+	def getTrainTestMaskKFold(self,
+							kFold=BTNHGV2ParameterClass.kFold,
+							shuffle=BTNHGV2ParameterClass.shuffle,
+							resetSeed=BTNHGV2ParameterClass.resetSeed):
+		# 获取所有有标签的节点索引
+		labeled_address_indices = torch.where(self.heteroData['address'].y != -1)[0]
+		num_labeled = len(labeled_address_indices)
+
+		if num_labeled == 0:
+			return []
+
+		# 获取标签
+		labels = self.heteroData['address'].y[labeled_address_indices].cpu().numpy()
+
+		# 定义分层K折
+		skf = StratifiedKFold(n_splits=kFold, shuffle=shuffle, random_state=resetSeed)
+
+		# 保存每折的mask
+		masks = []
+
+		for fold, (train_idx, test_idx) in enumerate(skf.split(np.arange(num_labeled), labels)):
+			# 创建 mask
+			train_mask = torch.zeros(self.heteroData['address'].num_nodes, dtype=torch.bool)
+			test_mask = torch.zeros(self.heteroData['address'].num_nodes, dtype=torch.bool)
+
+			train_mask[labeled_address_indices[train_idx]] = True
+			test_mask[labeled_address_indices[test_idx]] = True
+
+			masks.append((train_mask, test_mask))
+		self.heteroData['address'].kFold_masks = masks
+		print(f"kFold划分完成")
+		return masks
 
 	def _countCluster(self):
 		"""

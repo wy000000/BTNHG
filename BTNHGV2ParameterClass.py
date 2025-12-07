@@ -12,6 +12,8 @@ class BTNHGV2ParameterClass():
 	dropout=0.35
 	weight_decay=1e-4
 	useTrainWeight=False
+	
+	kFold_k:int=5
 
 	########### 早停
 	patience=32
@@ -42,7 +44,8 @@ class BTNHGV2ParameterClass():
 	fullModelFileName="fullModel.pt"
 	save=True
 	saveModelStateDict=True
-	saveFullModel=False	
+	saveFullModel=False
+	
 	########### RNG
 	_rng = np.random.default_rng(randSeed)
 	@classmethod

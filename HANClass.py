@@ -14,26 +14,14 @@ class HANClass(ExtendedNNModule):
 				hidden_channels=BTNHGV2ParameterClass.hidden_channels,
 				out_channels=BTNHGV2ParameterClass.out_channels,
 				num_heads=BTNHGV2ParameterClass.num_heads,
-				dropout=BTNHGV2ParameterClass.dropout,
-				batch_size=BTNHGV2ParameterClass.batch_size,
-				shuffle=BTNHGV2ParameterClass.shuffle,
-				resetSeed=BTNHGV2ParameterClass.resetSeed
-				):
-		"""
-		Heterogeneous Graph Attention Network		
-		Args:
-			hidden_channels=BTNHGV2ParameterClass.hidden_channels,
-			out_channels=BTNHGV2ParameterClass.out_channels,
-			num_heads=BTNHGV2ParameterClass.num_heads,
-			dropout=BTNHGV2ParameterClass.dropout,
-			batch_size=BTNHGV2ParameterClass.batch_size,
-			shuffle=BTNHGV2ParameterClass.shuffle,
-			resetSeed=BTNHGV2ParameterClass.resetSeed
-		"""
+				# batch_size=BTNHGV2ParameterClass.batch_size,
+				# shuffle=BTNHGV2ParameterClass.shuffle,
+				# resetSeed=BTNHGV2ParameterClass.resetSeed,
+				dropout=BTNHGV2ParameterClass.dropout):
 		super().__init__()
-		self.batch_size = batch_size
-		self.shuffle = shuffle
-		self.resetSeed = resetSeed
+		# self.batch_size = batch_size
+		# self.shuffle = shuffle
+		# self.resetSeed = resetSeed
 		self.heteroDataCls = heteroDataCls
 		self.heteroDataCls.getTrainTestMask()
 		self.heteroData = heteroDataCls.heteroData
