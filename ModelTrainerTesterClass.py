@@ -12,6 +12,8 @@ from sklearn.metrics import balanced_accuracy_score
 import matplotlib.pyplot as plt
 import numpy as np
 from EarlyStoppingClass import EarlyStoppingClass
+import copy
+from BTNHGV2HeteroDataClass import BTNHGV2HeteroDataClass
 
 class ModelTrainerTesterClass:
 	def __init__(self, model,				
@@ -172,10 +174,13 @@ class ModelTrainerTesterClass:
 							+f" best loss: {earlyStopping.best_loss:.4f}")
 			self._model.best_epoch_loss=best_epoch_loss
 			print("restore "+best_epoch_loss)
+		if earlyStopping.best_loss<self._model.kFold_best_loss:
+			self._model.kFold_best_loss=earlyStopping.best_loss
+			self._model.kFold_best_model_state=copy.deepcopy(self._model.state_dict())
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
 	def test(self):
-		"""使用 neighborLoader 在测试集上测试，并展示混淆矩阵"""
+		"""使用 neighborLoader 在测试集上测试"""
 		print("start test")
 		time1 = time.time()
 		self._model = self._model.to(self._device)
@@ -225,4 +230,26 @@ class ModelTrainerTesterClass:
 		print(f"测试用时: {time2 - time1}")
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
-	
+	def kFold_train_test(self):
+		print("start kFold_train_test")
+		time1 = time.time()
+		heteroData:BTNHGV2HeteroDataClass=self._model.heteroData
+		for train_mask, tesk_mask in heteroData['address'].kFold_masks:
+			heteroData['address'].train_mask=train_mask
+			heteroData['address'].test_mask=tesk_mask
+			self.train()
+			self.test()
+
+
+
+
+
+
+
+
+
+
+
+		time2 = time.time()
+		print(f"kFold_train_test用时: {time2 - time1}")
+		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")

@@ -52,6 +52,8 @@ class BTNHGV2HeteroDataClass(Dataset):
 		else:
 			self._loadBTNHGV2Data(dataPath=self.dataPath)
 								# debugMode=self.debugMode)
+			self.getTrainTestMask()
+			self.getTrainTestMaskKFold()
 	def _loadBTNHGV2Data(self,
 						dataPath=BTNHGV2ParameterClass.dataPath):
 						# debugMode=BTNHGV2ParameterClass.debugMode):
@@ -237,6 +239,7 @@ class BTNHGV2HeteroDataClass(Dataset):
 	def getTrainTestMask(self, train_size=BTNHGV2ParameterClass.train_size,
 							shuffle=BTNHGV2ParameterClass.shuffle,
 							resetSeed=BTNHGV2ParameterClass.resetSeed):	
+		#regoin
 		"""
 		为异构图数据中的address节点生成训练集和测试集掩码。
 		同时生成种类权重。
@@ -263,6 +266,7 @@ class BTNHGV2HeteroDataClass(Dataset):
 			- test_mask: 长度为address节点总数的布尔张量，True表示该节点属于测试集
 			如果没有找到带标签的节点，则返回(None, None)    
 		"""
+		#endregion
 
 		time1 = time.time()
 

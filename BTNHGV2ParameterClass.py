@@ -13,6 +13,7 @@ class BTNHGV2ParameterClass():
 	weight_decay=1e-4
 	useTrainWeight=False
 	
+	########### 交叉验证
 	kFold_k:int=5
 
 	########### 早停

@@ -17,7 +17,6 @@ class SAGEClass(ExtendedNNModule):
 		super().__init__()
 		self._dropout = nn.Dropout(p=dropout)
 		self.heteroDataCls = heteroDataCls
-		self.heteroDataCls.getTrainTestMask()
 		self.heteroData = heteroDataCls.heteroData
 		self.num_heads = num_heads
 		self.hidden_channels = hidden_channels
