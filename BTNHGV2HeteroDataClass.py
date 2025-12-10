@@ -316,7 +316,7 @@ class BTNHGV2HeteroDataClass(Dataset):
 		return train_mask, test_mask
 	
 	def getTrainTestMaskKFold(self,
-							kFold=BTNHGV2ParameterClass.kFold,
+							kFold_k=BTNHGV2ParameterClass.kFold_k,
 							shuffle=BTNHGV2ParameterClass.shuffle,
 							resetSeed=BTNHGV2ParameterClass.resetSeed):
 		# 获取所有有标签的节点索引
@@ -330,7 +330,7 @@ class BTNHGV2HeteroDataClass(Dataset):
 		labels = self.heteroData['address'].y[labeled_address_indices].cpu().numpy()
 
 		# 定义分层K折
-		skf = StratifiedKFold(n_splits=kFold, shuffle=shuffle, random_state=resetSeed)
+		skf = StratifiedKFold(n_splits=kFold_k, shuffle=shuffle, random_state=resetSeed)
 
 		# 保存每折的mask
 		masks = []

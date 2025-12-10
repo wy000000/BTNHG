@@ -65,6 +65,8 @@ class ExtendedNNModule(nn.Module):
 			"kFold_k": self.kFold_k,
 			"kFold_training_time": self.kFold_training_time,
 			"kFold_accuracy_mean": self.kFold_accuracy_mean,
+			"kFold_best_loss": self.kFold_best_loss,
+			"kFold_evaluations_mean": self.evaluationMetrics,
 			"env_info": self.env_info
 		}		
 		jsonStr=json.dumps(attrs, default=self._to_serializable, ensure_ascii=False, indent=4)

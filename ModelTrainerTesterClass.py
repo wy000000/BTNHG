@@ -14,6 +14,7 @@ import numpy as np
 from EarlyStoppingClass import EarlyStoppingClass
 import copy
 from BTNHGV2HeteroDataClass import BTNHGV2HeteroDataClass
+from resultAnalysisClass import resultAnalysisClass
 
 class ModelTrainerTesterClass:
 	def __init__(self, model,				
@@ -234,22 +235,21 @@ class ModelTrainerTesterClass:
 		print("start kFold_train_test")
 		time1 = time.time()
 		heteroData:BTNHGV2HeteroDataClass=self._model.heteroData
+		k=0
 		for train_mask, tesk_mask in heteroData['address'].kFold_masks:
+			print(f"{k} Fold, total {self._model.kFold_k} fold")
 			heteroData['address'].train_mask=train_mask
 			heteroData['address'].test_mask=tesk_mask
 			self.train()
 			self.test()
-
-
-
-
-
-
-
-
-
-
+			k+=1
+			self.train()
+			self.test()
+			result=resultAnalysisClass(self._model)
+			self._model.kFold_evaluations.append(result.model.evaluationMetrics)
 
 		time2 = time.time()
+		kFoldTimeStr=time.strftime('%H:%M:%S', time.gmtime(time2 - time1))
+		self._model.kFold_training_time=kFoldTimeStr
 		print(f"kFold_train_test用时: {time2 - time1}")
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")

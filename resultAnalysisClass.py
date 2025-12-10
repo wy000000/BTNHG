@@ -33,8 +33,8 @@ class resultAnalysisClass:
 	def __init__(self,
 			  	model:ExtendedNNModule=None,
 				folderPath:str=BTNHGV2ParameterClass.dataPath,
-				resultFolderName:str=BTNHGV2ParameterClass.resultFolderName				
-				):
+				resultFolderName:str=BTNHGV2ParameterClass.resultFolderName,
+				kFold:bool=BTNHGV2ParameterClass.kFold):
 		#path
 		self.resultFolderName=resultFolderName
 		self.resultFolderPath=os.path.join(folderPath, self.resultFolderName)
@@ -43,11 +43,16 @@ class resultAnalysisClass:
 		self.model=model
 		self.modelName=self.model.__class__.__name__
 		self.model.modelName=self.modelName
+		self.kFold=kFold
 		#评估参数
 		self.accuracy=0.0
-		self.model.evaluationMetrics=self.compute_metrics()
+		if not self.kFold:
+			self.model.evaluationMetrics=self.compute_metrics()
+		if self.kFold:
+			self.model.evaluationMetrics=self.compute_kFold_metrics()
 		#配置信息
-		self.model.env_info=self.get_training_env_info()	
+		if self.model.env_info is None:
+			self.model.env_info=self.get_training_env_info()
 
 	def showEvaluationMetrics(self):
 		metrics=self.model.evaluationMetrics
@@ -131,6 +136,46 @@ class resultAnalysisClass:
 		print("Evaluation metrics are computed.")
 		return metrics
 
+	def compute_kFold_metrics(self):
+		kFold_metrics=self.model.kFold_evaluations
+		# 辅助函数：计算某个指标的平均值
+		def avg_metric(metric_name):
+			values = [fold.get(metric_name) for fold in kFold_metrics if fold.get(metric_name) is not None]
+			return sum(values) / len(values) if values else None
+		# 计算kFold指标
+		kFold_acc=avg_metric("accuracy")
+		kFold_avg_conf=avg_metric("avg_confidence")
+		kFold_bal_acc=avg_metric("balanced_accuracy")
+		kFold_prec_macro=avg_metric("precision_macro")
+		kFold_rec_macro=avg_metric("recall_macro")
+		kFold_f1_macro=avg_metric("f1_macro")
+		kFold_prec_weighted=avg_metric("precision_weighted")
+		kFold_rec_weighted=avg_metric("recall_weighted")
+		kFold_f1_weighted=avg_metric("f1_weighted")
+		kFold_roc_auc=avg_metric("roc_auc_macro")
+		kFold_pr_auc=avg_metric("pr_auc_macro")
+		kFold_kappa=avg_metric("cohen_kappa")
+		kFold_mcc=avg_metric("mcc")
+		self.model.kFold_accuracy_mean=kFold_acc
+
+		kFold_metrics={			
+			"kFold_accuracy": kFold_acc,
+			"kFold_training_time": self.model.kFold_training_time,
+			"kFold_avg_confidence": kFold_avg_conf,
+			"kFold_balanced_accuracy": kFold_bal_acc,
+			"kFold_precision_macro": kFold_prec_macro,
+			"kFold_recall_macro": kFold_rec_macro,
+			"kFold_f1_macro": kFold_f1_macro,
+			"kFold_precision_weighted": kFold_prec_weighted,
+			"kFold_recall_weighted": kFold_rec_weighted,
+			"kFold_f1_weighted": kFold_f1_weighted,
+			"kFold_roc_auc_macro": kFold_roc_auc,
+			"kFold_pr_auc_macro": kFold_pr_auc,
+			"kFold_cohen_kappa": kFold_kappa,
+			"kFold_mcc": kFold_mcc
+		}
+		return kFold_metrics
+	
 	def plot_true_pred_counts(self, y_true=None, y_preds=None):
 		if(y_true is None):
 			y_true=self.model.all_y_true
@@ -285,11 +330,13 @@ class resultAnalysisClass:
 	
 	def _saveBTNHGV2ParameterClass(self):
 		#复制BTNHGV2ParameterClass.py 到 folderPath
-		fileName=BTNHGV2ParameterClass.__name__+".txt"
-		filePath=os.path.join(self.methodFolderPath, fileName)
+		className=BTNHGV2ParameterClass.__name__
+		srcFileName=className+".py"
+		dstFileName=className+".txt"
+		filePath=os.path.join(self.methodFolderPath, dstFileName)
 
-		shutil.copyfile(fileName, filePath)
-		print(f"{fileName}已保存")
+		shutil.copyfile(srcFileName, filePath)
+		print(f"{dstFileName}已保存")
 
 		return filePath
 	
@@ -420,10 +467,13 @@ class resultAnalysisClass:
 		
 		return filePath
 	
-	def _save_evaluationMetrics_kFold(self, filename="evaluation_metrics.xlsx"):
-		fileName=BTNHGV2ParameterClass.evaluationMetricsFileName
-		filePath=os.path.join(self.methodFolderPath, fileName)
-		kFold_evaluations=self.model.kFold_evaluations
+	def _save_evaluationMetrics_kFold(self):
+		fileName = BTNHGV2ParameterClass.kFold_evaluationMetricsFileName
+		filePath = os.path.join(self.methodFolderPath, fileName)
+		kFold_evaluations = self.model.kFold_evaluations  # 应该是 list[dict]
+		print(type(kFold_evaluations))
+		print(kFold_evaluations)
+
 		# 创建工作簿
 		wb = openpyxl.Workbook()
 		ws = wb.active
@@ -432,7 +482,8 @@ class resultAnalysisClass:
 		# 获取所有指标名（可能不同 fold 有不同指标）
 		all_metrics = set()
 		for eval_dict in kFold_evaluations:
-			all_metrics.update(eval_dict.keys())
+			if isinstance(eval_dict, dict):
+				all_metrics.update(eval_dict.keys())
 		all_metrics = list(all_metrics)
 
 		# 写标题行
@@ -441,17 +492,21 @@ class resultAnalysisClass:
 
 		# 写数据行
 		for metric in all_metrics:
+			# 先写指标和各 fold 的值
 			row = [metric]
-			for i, eval_dict in enumerate(kFold_evaluations):
+			for eval_dict in kFold_evaluations:
 				value = eval_dict.get(metric, None)
 				row.append(value)
-			# 添加平均值公式
+			ws.append(row)
+
+			# 当前行号就是刚写入的行
+			current_row = ws.max_row
 			start_col = 2
 			end_col = 1 + len(kFold_evaluations)
-			avg_formula = f"=AVERAGE({ws.cell(row=ws.max_row+1, column=start_col).coordinate}\
-				:{ws.cell(row=ws.max_row+1, column=end_col).coordinate})"
-			row.append(avg_formula)
-			ws.append(row)
+
+			# 在最后一列写入公式
+			avg_formula = f"=AVERAGE({ws.cell(row=current_row, column=start_col).coordinate}:{ws.cell(row=current_row, column=end_col).coordinate})"
+			ws.cell(row=current_row, column=end_col+1).value = avg_formula
 
 		# 绘制 accuracy 折线图
 		chart = LineChart()
@@ -462,17 +517,24 @@ class resultAnalysisClass:
 		# 找到 accuracy 行
 		for row_idx in range(2, ws.max_row + 1):
 			if ws.cell(row=row_idx, column=1).value == "accuracy":
+				# 数据区域：这一行的所有 fold 数值
 				data = Reference(ws, min_col=2, max_col=1+len(kFold_evaluations), min_row=row_idx, max_row=row_idx)
-				chart.addData(data, titles_from_data=False)
+				chart.add_data(data, titles_from_data=False)
+
+				# 横坐标：标题行的 Fold1, Fold2, ...
 				cats = Reference(ws, min_col=2, max_col=1+len(kFold_evaluations), min_row=1, max_row=1)
 				chart.set_categories(cats)
+
+				# 添加图表到工作表
 				ws.add_chart(chart, f"E{row_idx+2}")
 				break
 
+
 		# 保存文件
 		wb.save(filePath)
-		print(f"{fileName}已保存")
+		print(f"{fileName} 已保存")
 		return filePath
+
 
 		
 

@@ -5,7 +5,9 @@ import math
 class BTNHGV2ParameterClass():
 	version="2025.12.6.1"
 	########### 训练
-	epochs=512
+	###############################	
+	epochs=1
+	###############################
 	epochsDisplay=4
 	lr=0.01
 	# max_norm=100000000.0
@@ -14,7 +16,8 @@ class BTNHGV2ParameterClass():
 	useTrainWeight=False
 	
 	########### 交叉验证
-	kFold_k:int=5
+	kFold:bool=False
+	kFold_k:int=2
 
 	########### 早停
 	patience=32
@@ -43,6 +46,7 @@ class BTNHGV2ParameterClass():
 	y_true_preds_probsFileName="y_true_preds_probs.xlsx"
 	modelStateDictFileName="model.state_dict.pt"
 	fullModelFileName="fullModel.pt"
+	kFold_evaluationMetricsFileName="kFold_evaluationMetrics.xlsx"
 	save=True
 	saveModelStateDict=True
 	saveFullModel=False
