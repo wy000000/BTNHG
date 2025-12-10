@@ -29,7 +29,7 @@ class EarlyStoppingClass:
 		else:
 			self.counter += 1
 			if self.counter >= self.patience and epochs>=self.stopableEpoch:
-				self.early_stop = True		
+				self.early_stop = True
 		return self.early_stop
 
 	def restore_best_weights(self, model):

@@ -21,7 +21,6 @@ class RGCNClass(ExtendedNNModule):
 				dropout=BTNHGV2ParameterClass.dropout):		
 		super().__init__()
 		self.heteroDataCls = heteroDataCls
-		self.heteroDataCls.getTrainTestMask()		
 		self.heteroData = heteroDataCls.heteroData
 		self._num_layers = num_layers
 		self._node_types = list(self.heteroData.node_types)

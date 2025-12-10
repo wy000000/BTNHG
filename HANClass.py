@@ -23,7 +23,6 @@ class HANClass(ExtendedNNModule):
 		# self.shuffle = shuffle
 		# self.resetSeed = resetSeed
 		self.heteroDataCls = heteroDataCls
-		self.heteroDataCls.getTrainTestMask()
 		self.heteroData = heteroDataCls.heteroData
 		self._metadata = self.heteroData.metadata()
 		self._num_classes = self.heteroData["address"].y.unique().numel()-1

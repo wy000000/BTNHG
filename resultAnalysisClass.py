@@ -14,6 +14,8 @@ import sys
 import cpuinfo
 import torch.nn.functional as F
 import pandas as pd
+import openpyxl
+from openpyxl.chart import LineChart, Reference
 from sklearn.metrics import (
 	accuracy_score,
 	balanced_accuracy_score,
@@ -232,7 +234,7 @@ class resultAnalysisClass:
 		Items can be saved only if save=True
 		'''
 		if save:
-			self._createMethodFolder()
+			self._createMethodFolder(kfold=False)
 			self._saveBTNHGV2ParameterClass()
 			self._saveExtendedAttributes()
 			self._save_epoch_loss_list()
@@ -244,11 +246,34 @@ class resultAnalysisClass:
 				self._saveFullModel()
 		return
 	
-	def _createMethodFolder(self):
+	def save_kFold(self,
+			save:bool=BTNHGV2ParameterClass.save,
+			saveModelStateDict:bool=BTNHGV2ParameterClass.saveModelStateDict,
+			saveFullModel:bool=BTNHGV2ParameterClass.saveFullModel):
+		'''
+		Items can be saved only if save=True
+		'''
+		if save:
+			self._createMethodFolder(kfold=True)
+			self._saveBTNHGV2ParameterClass()
+			self._save_extended_attributes_kFold()
+			self._save_evaluationMetrics_kFold()
+			if(saveModelStateDict):
+				self._save_kFold_best_model_state_dict()
+			if(saveFullModel):
+				self._save_kFold_fullModel()
+			
+		return
+	
+	def _createMethodFolder(self, kfold:bool=False):
 		modelName=self.modelName
 		accuracy=self.accuracy
 		#folderName=modelName+年月日时分秒+accuracy,以"-"分隔
-		self.methodFolderName=modelName+"-"+datetime.datetime.now().strftime("%Y.%m.%d %H.%M.%S")\
+		if kfold:
+			self.methodFolderName=modelName+"-kFold-"+datetime.datetime.now().strftime("%Y.%m.%d %H.%M.%S")\
+					+"-"+f"acc {accuracy:.4f}"
+		else:
+			self.methodFolderName=modelName+"-"+datetime.datetime.now().strftime("%Y.%m.%d %H.%M.%S")\
 					+"-"+f"acc {accuracy:.4f}"
 		#将path与folderName拼接
 		self.methodFolderPath=os.path.join(self.resultFolderPath, self.methodFolderName)
@@ -364,8 +389,92 @@ class resultAnalysisClass:
 
 		return filePath
 		
+	def _save_kFold_best_model_state_dict(self):
+		fileName=BTNHGV2ParameterClass.modelStateDictFileName
+		filePath=os.path.join(self.methodFolderPath, fileName)
 
+		torch.save(self.model.kFold_best_model_state, filePath)
+		print(f"{fileName}已保存")
+
+		return filePath
+
+	def _save_kFold_fullModel(self):
+		#复制model 到 self.methodFolderPath
+		fileName=BTNHGV2ParameterClass.fullModelFileName
+		filePath=os.path.join(self.methodFolderPath, fileName)
+		self.model.load_state_dict(self.model.kFold_best_model_state)
+
+		torch.save(self.model, filePath)
+		print(f"{fileName}已保存")
+
+		return filePath
 	
+	def _save_extended_attributes_kFold(self):
+		fileName=BTNHGV2ParameterClass.extendedAttributesFileName
+		filePath=os.path.join(self.methodFolderPath, fileName)
+		str=self.model.serialize_extended_attributes_kFold()
+		
+		with open(filePath, "w") as f:
+			f.write(str)
+		print(f"{fileName}已保存")
+		
+		return filePath
+	
+	def _save_evaluationMetrics_kFold(self, filename="evaluation_metrics.xlsx"):
+		fileName=BTNHGV2ParameterClass.evaluationMetricsFileName
+		filePath=os.path.join(self.methodFolderPath, fileName)
+		kFold_evaluations=self.model.kFold_evaluations
+		# 创建工作簿
+		wb = openpyxl.Workbook()
+		ws = wb.active
+		ws.title = "Metrics"
+
+		# 获取所有指标名（可能不同 fold 有不同指标）
+		all_metrics = set()
+		for eval_dict in kFold_evaluations:
+			all_metrics.update(eval_dict.keys())
+		all_metrics = list(all_metrics)
+
+		# 写标题行
+		headers = ["Metric"] + [f"Fold{i+1}" for i in range(len(kFold_evaluations))] + ["Average"]
+		ws.append(headers)
+
+		# 写数据行
+		for metric in all_metrics:
+			row = [metric]
+			for i, eval_dict in enumerate(kFold_evaluations):
+				value = eval_dict.get(metric, None)
+				row.append(value)
+			# 添加平均值公式
+			start_col = 2
+			end_col = 1 + len(kFold_evaluations)
+			avg_formula = f"=AVERAGE({ws.cell(row=ws.max_row+1, column=start_col).coordinate}\
+				:{ws.cell(row=ws.max_row+1, column=end_col).coordinate})"
+			row.append(avg_formula)
+			ws.append(row)
+
+		# 绘制 accuracy 折线图
+		chart = LineChart()
+		chart.title = "Accuracy across folds"
+		chart.y_axis.title = "Accuracy"
+		chart.x_axis.title = "Fold"
+
+		# 找到 accuracy 行
+		for row_idx in range(2, ws.max_row + 1):
+			if ws.cell(row=row_idx, column=1).value == "accuracy":
+				data = Reference(ws, min_col=2, max_col=1+len(kFold_evaluations), min_row=row_idx, max_row=row_idx)
+				chart.addData(data, titles_from_data=False)
+				cats = Reference(ws, min_col=2, max_col=1+len(kFold_evaluations), min_row=1, max_row=1)
+				chart.set_categories(cats)
+				ws.add_chart(chart, f"E{row_idx+2}")
+				break
+
+		# 保存文件
+		wb.save(filePath)
+		print(f"{fileName}已保存")
+		return filePath
+
+		
 
 
 	

@@ -18,7 +18,6 @@ class HGTClass(ExtendedNNModule):
 				useProj=BTNHGV2ParameterClass.HGT_useProj):
 		super().__init__()
 		self.heteroDataCls = heteroDataCls
-		self.heteroDataCls.getTrainTestMask()
 		self.heteroData = heteroDataCls.heteroData
 		self._metadata = self.heteroData.metadata()		
 		self._out_channels = out_channels
