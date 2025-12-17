@@ -5,6 +5,8 @@ version="2025.12.6.1"
 
 Demonstrating how to use the BTNHG2013v2 dataset in PyTorch.
 
+dataset https://www.kaggle.com/datasets/wy000000/btnhgv2
+
 HAN, HGT, RGCN, SAGE, GAT and GraphConv methods are integrated.
 
 code files：
