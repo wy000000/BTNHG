@@ -14,8 +14,10 @@ import sys
 import cpuinfo
 import torch.nn.functional as F
 import pandas as pd
-import openpyxl
-from openpyxl.chart import LineChart, Reference
+# import openpyxl
+import time
+import xlsxwriter
+# from openpyxl.chart import LineChart, Reference
 from sklearn.metrics import (
 	accuracy_score,
 	balanced_accuracy_score,
@@ -352,7 +354,8 @@ class resultAnalysisClass:
 		return filePath
 
 	def _save_epoch_loss_list(self):
-		fileName = BTNHGV2ParameterClass.epoch_loss_listFileName
+		fileName = f"{int(time.time() * 1000) % 1000:03d} " \
+			+BTNHGV2ParameterClass.epoch_loss_listFileName
 		filePath = os.path.join(self.methodFolderPath, fileName)
 
 		epoch_loss_list = []
@@ -391,7 +394,8 @@ class resultAnalysisClass:
 		return filePath
 
 	def _saveY_true_preds_probs(self):
-		fileName = BTNHGV2ParameterClass.y_true_preds_probsFileName
+		fileName = f"{int(time.time() * 1000) % 1000:03d} " \
+			+ BTNHGV2ParameterClass.y_true_preds_probsFileName
 		filePath = os.path.join(self.methodFolderPath, fileName)
 
 		y_true = self.model.all_y_true
@@ -466,18 +470,16 @@ class resultAnalysisClass:
 		print(f"{fileName}已保存")
 		
 		return filePath
-	
-	def _save_evaluationMetrics_kFold(self):
-		fileName = BTNHGV2ParameterClass.kFold_evaluationMetricsFileName
-		filePath = os.path.join(self.methodFolderPath, fileName)
-		kFold_evaluations = self.model.kFold_evaluations  # 应该是 list[dict]
-		print(type(kFold_evaluations))
-		print(kFold_evaluations)
 
-		# 创建工作簿
-		wb = openpyxl.Workbook()
-		ws = wb.active
-		ws.title = "Metrics"
+	def _save_evaluationMetrics_kFold(self):
+		fileName = f"{int(time.time() * 1000) % 1000:03d} " \
+			+ BTNHGV2ParameterClass.kFold_evaluationMetricsFileName
+		filePath = os.path.join(self.methodFolderPath, fileName)
+		kFold_evaluations = self.model.kFold_evaluations  # list[dict]
+
+		# 创建工作簿和工作表
+		wb = xlsxwriter.Workbook(filePath)
+		ws = wb.add_worksheet("Metrics")
 
 		# 获取所有指标名（可能不同 fold 有不同指标）
 		all_metrics = set()
@@ -488,56 +490,47 @@ class resultAnalysisClass:
 
 		# 写标题行
 		headers = ["Metric"] + [f"Fold{i+1}" for i in range(len(kFold_evaluations))] + ["Average"]
-		ws.append(headers)
+		for col, h in enumerate(headers):
+			ws.write(0, col, h)
 
 		# 写数据行
-		for metric in all_metrics:
-			# 先写指标和各 fold 的值
-			row = [metric]
-			for eval_dict in kFold_evaluations:
+		for row_idx, metric in enumerate(all_metrics, start=1):
+			ws.write(row_idx, 0, metric)
+			# 写各 fold 的值
+			for col_idx, eval_dict in enumerate(kFold_evaluations, start=1):
 				value = eval_dict.get(metric, None)
-				row.append(value)
-			ws.append(row)
+				ws.write(row_idx, col_idx, value)
 
-			# 当前行号就是刚写入的行
-			current_row = ws.max_row
-			start_col = 2
-			end_col = 1 + len(kFold_evaluations)
+			# 写平均公式
+			start_col = 1
+			end_col = len(kFold_evaluations)
+			avg_formula = f"=AVERAGE({xlsxwriter.utility.xl_rowcol_to_cell(row_idx, start_col)}:" \
+						f"{xlsxwriter.utility.xl_rowcol_to_cell(row_idx, end_col)})"
+			ws.write_formula(row_idx, end_col + 1, avg_formula)
 
-			# 在最后一列写入公式
-			avg_formula = f"=AVERAGE({ws.cell(row=current_row, column=start_col).coordinate}:{ws.cell(row=current_row, column=end_col).coordinate})"
-			ws.cell(row=current_row, column=end_col+1).value = avg_formula
-
-		# 绘制 accuracy 折线图
-		chart = LineChart()
-		chart.title = "Accuracy across folds"
-		chart.y_axis.title = "Accuracy"
-		chart.x_axis.title = "Fold"
+		# 创建折线图
+		chart = wb.add_chart({'type': 'line'})
+		chart.set_title({'name': 'Accuracy across folds'})
+		chart.set_x_axis({'name': 'Fold'})
+		chart.set_y_axis({'name': 'Accuracy'})
 
 		# 找到 accuracy 行
-		for row_idx in range(2, ws.max_row + 1):
-			if ws.cell(row=row_idx, column=1).value == "accuracy":
-				# 数据区域：这一行的所有 fold 数值
-				data = Reference(ws, min_col=2, max_col=1+len(kFold_evaluations), min_row=row_idx, max_row=row_idx)
-				chart.add_data(data, titles_from_data=False)
-
-				# 横坐标：标题行的 Fold1, Fold2, ...
-				cats = Reference(ws, min_col=2, max_col=1+len(kFold_evaluations), min_row=1, max_row=1)
-				chart.set_categories(cats)
-
-				# 添加图表到工作表
-				ws.add_chart(chart, f"E{row_idx+2}")
+		for row_idx, metric in enumerate(all_metrics, start=1):
+			if metric == "accuracy":
+				# 数据区域：各 fold 的值（不包括平均列）
+				chart.add_series({
+					'name':       'accuracy',
+					'categories': ['Metrics', 0, 1, 0, len(kFold_evaluations)],  # 标题行 Fold1..FoldK
+					'values':     ['Metrics', row_idx, 1, row_idx, len(kFold_evaluations)],
+				})
 				break
 
+		# 插入图表到工作表
+		ws.insert_chart(len(all_metrics) + 2, 0, chart)
 
 		# 保存文件
-		wb.save(filePath)
+		wb.close()
 		print(f"{fileName} 已保存")
 		return filePath
 
-
-		
-
-
 	
-
