@@ -32,16 +32,17 @@ gmodel=SAGEClass(heteroDataCls=heteroDataClass)
 # gmodel=GraphConvClass(heteroDataCls=heteroDataClass)
 
 trainer=ModelTrainerTesterClass(model=gmodel)
-
 trainer.train()
-
 trainer.test()
-
 resultCls=resultAnalysisClass(gmodel)
-
 # resultCls.showEvaluationMetrics()
 # resultCls.showExtendedAttributes()
 # resultCls.plot_true_pred_counts()
 # resultCls.plot_confusion_matrix()
-
 resultCls.save()
+
+############## kFold cross-validation ##############
+trainertester=ModelTrainerTesterClass(model=gmodel)
+trainertester.kFold_train_test()
+resultCls=resultAnalysisClass(model=gmodel, kFold=True)
+resultCls.save_kFold()

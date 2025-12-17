@@ -3,10 +3,10 @@ import math
 
 #定义一个参数类，保存程序中用到的各种参数
 class BTNHGV2ParameterClass():
-	version="2025.12.6.1"
+	version="2025.12.18.1"
 	########### 训练
 	###############################	
-	epochs=1
+	epochs=512
 	###############################
 	epochsDisplay=4
 	lr=0.01
@@ -17,7 +17,7 @@ class BTNHGV2ParameterClass():
 	
 	########### 交叉验证
 	kFold:bool=False
-	kFold_k:int=2
+	kFold_k:int=5
 
 	########### 早停
 	patience=32

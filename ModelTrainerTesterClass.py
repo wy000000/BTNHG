@@ -235,7 +235,7 @@ class ModelTrainerTesterClass:
 		print("start kFold_train_test")
 		time1 = time.time()
 		heteroData:BTNHGV2HeteroDataClass=self._model.heteroData
-		k=0
+		k=1
 		for train_mask, tesk_mask in heteroData['address'].kFold_masks:
 			print(f"{k} Fold, total {self._model.kFold_k} fold")
 			heteroData['address'].train_mask=train_mask

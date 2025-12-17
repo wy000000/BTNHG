@@ -1,6 +1,10 @@
 # BTNHG
 Bitcoin Transaction Network Heterogeneous Graph
 
+version="2025.12.18.1"
+
+kFold cross-validation is added.
+
 version="2025.12.6.1"
 
 Demonstrating how to use the BTNHG2013v2 dataset in PyTorch.
@@ -44,33 +48,25 @@ sample code:
 	heteroDataClass=BTNHGV2HeteroDataClass()
 
 	# gmodel=HANClass(heteroDataCls=heteroDataClass)
-
 	# gmodel=HGTClass(heteroDataCls=heteroDataClass)
-
 	# gmodel=RGCNClass(heteroDataCls=heteroDataClass)
-
 	gmodel=SAGEClass(heteroDataCls=heteroDataClass)
-
 	# gmodel=GATClass(heteroDataCls=heteroDataClass)
-
 	# gmodel=GraphConvClass(heteroDataCls=heteroDataClass)
 
 	trainer=ModelTrainerTesterClass(model=gmodel)
-
 	trainer.train()
-
 	trainer.test()
-
 	resultCls=resultAnalysisClass(gmodel)
-
 	# resultCls.showEvaluationMetrics()
-
 	# resultCls.showExtendedAttributes()
-
 	# resultCls.plot_true_pred_counts()
-
 	# resultCls.plot_confusion_matrix()
-
 	resultCls.save()
 
+	############## kFold cross-validation ##############
+	trainertester=ModelTrainerTesterClass(model=gmodel)
+	trainertester.kFold_train_test()
+	resultCls=resultAnalysisClass(model=gmodel, kFold=True)
+	resultCls.save_kFold()
 
