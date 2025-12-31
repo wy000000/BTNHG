@@ -14,12 +14,12 @@ class addressTimeDataClass:
 	def _loadAddressTimeFeature(self, dataPath:str=None)->pd.DataFrame:
 		print("start read addressTimeData")
 		if dataPath is None:
-			dataPath=self._dataPath		
+			dataPath=self._dataPath
 		#读取所有数据
 		addressTime_feat_df = pd.read_csv(os.path.join(dataPath, "addressTimeData.csv"))
 		return addressTime_feat_df
 	
-	def getAddressData(self):
+	def processAddressTimeFeature(self):
 		#取self.address_time_feat_df的长度
 		length=self.address_time_feat_df.shape[0]
 		i=0
