@@ -22,21 +22,18 @@ time2 = time.time()
 # print("import used time: ", time2 - time1)
 # print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
-
-class BTNHGV2HeteroDataClass(Dataset):
+class BTNHGV2HeteroDataClass():
 	"""
 	比特币交易网络数据集类，用于处理异构图数据的划分和加载
 	"""
 	def __init__(self, heteroData=None,
 			dataPath=BTNHGV2ParameterClass.dataPath):
-			# debugMode=BTNHGV2ParameterClass.debugMode):
 		"""
 		初始化 BTNHGV2HeteroDataClass 类
 		Args:
 			heteroData: 异构图数据对象 (HeteroData)，如果为 None，则从文件加载
 			dataPath: 数据文件路径，默认值为 BTNHGV2ParameterClass.dataPath			
 		"""
-		super().__init__()
 		self.dataPath=dataPath
 		self.heteroData=None
 		self._address_id_map = None
@@ -45,7 +42,6 @@ class BTNHGV2HeteroDataClass(Dataset):
 		self._cluster_id_map = None
 		self.class_weight=None #在getTrainTestMask()中计算
 		self.cluster_count=None		
-		# self.debugMode=debugMode
 
 		if heteroData is not None:
 			self.heteroData=heteroData
@@ -54,9 +50,9 @@ class BTNHGV2HeteroDataClass(Dataset):
 								# debugMode=self.debugMode)
 			self.getTrainTestMask()
 			self.getTrainTestMaskKFold()
+
 	def _loadBTNHGV2Data(self,
-						dataPath=BTNHGV2ParameterClass.dataPath):
-						# debugMode=BTNHGV2ParameterClass.debugMode):
+						dataPath=None):
 		"""
 		从文件加载比特币交易网络数据集,放入self.heteroData
 		Args:
@@ -64,7 +60,9 @@ class BTNHGV2HeteroDataClass(Dataset):
 		"""
 		print("start construct HeteroData")
 		time1 = time.time()
-
+		if dataPath is None:
+			dataPath=self.dataPath
+		
 		# 1. 读取数据
 		print("start read data")
 		time1 = time.time()
@@ -396,3 +394,9 @@ class BTNHGV2HeteroDataClass(Dataset):
 		clusterID = [clusterID for clusterID, idx in self._cluster_id_map.items()\
 					if idx == clusterIDIndex]		
 		return clusterID
+	
+	def get_addressID(self, i):
+		#打印self._address_id_map的大小
+		print(f"self._address_id_map的大小: {len(self._address_id_map)}")
+		print(f"self._address_id_map的第{i}个元素: {self._address_id_map[i]}")
+		return self._address_id_map[i]

@@ -1,5 +1,4 @@
 import numpy as np
-import math
 
 #定义一个参数类，保存程序中用到的各种参数
 class BTNHGV2ParameterClass():
@@ -58,6 +57,9 @@ class BTNHGV2ParameterClass():
 		if isReset:
 			cls._rng = np.random.default_rng(seed)
 		return int(cls._rng.integers(0, 4294967296))
+	
+	#######################################
+
 	
 
 
