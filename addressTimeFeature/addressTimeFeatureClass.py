@@ -39,7 +39,8 @@ class addressTimeFeatureClass:
 		
 		# 使用 NumPy 数组替代 DataFrame，初始化所有值为0
 		# 形状：(spanOfBlocks, addressBlockFeatureCount)
-		self.block_features = np.zeros((self.spanOfBlocks, self.addressBlockFeatureCount), dtype=np.float64)
+		self.block_features = np.zeros((self.spanOfBlocks, self.addressBlockFeatureCount),
+							dtype=np.float32)
 		
 		# 初始化 blockID 为 -1
 		self.block_features[:, self.BLOCK_ID_IDX] = -1
