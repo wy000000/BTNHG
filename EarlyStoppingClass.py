@@ -1,5 +1,4 @@
 from BTNHGV2ParameterClass import BTNHGV2ParameterClass
-
 import copy
 
 class EarlyStoppingClass:

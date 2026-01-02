@@ -9,7 +9,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 from BTNHGV2ParameterClass import BTNHGV2ParameterClass
 from BTNHGV2HeteroDataClass import BTNHGV2HeteroDataClass
-from ModelTrainerTesterClass import ModelTrainerTesterClass
+from HeteroModelTrainerTesterClass import HeteroModelTrainerTesterClass
 from HANClass import HANClass
 from HGTClass import HGTClass
 from RGCNClass import RGCNClass
@@ -31,7 +31,7 @@ gmodel=SAGEClass(heteroDataCls=heteroDataClass)
 # gmodel=GATClass(heteroDataCls=heteroDataClass)
 # gmodel=GraphConvClass(heteroDataCls=heteroDataClass)
 
-trainer=ModelTrainerTesterClass(model=gmodel)
+trainer=HeteroModelTrainerTesterClass(model=gmodel)
 trainer.train()
 trainer.test()
 resultCls=resultAnalysisClass(gmodel)
@@ -42,7 +42,7 @@ resultCls=resultAnalysisClass(gmodel)
 resultCls.save()
 
 ############## kFold cross-validation ##############
-trainertester=ModelTrainerTesterClass(model=gmodel)
+trainertester=HeteroModelTrainerTesterClass(model=gmodel)
 trainertester.kFold_train_test()
 resultCls=resultAnalysisClass(model=gmodel, kFold=True)
 resultCls.save_kFold()

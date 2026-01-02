@@ -61,7 +61,6 @@ class GATClass(ExtendedNNModule):
 			dropout=dropout,
 			add_self_loops=False)
 
-
 	def forward(self, hetero_data):
 		x_dict, edge_index_dict = hetero_data.x_dict, hetero_data.edge_index_dict
 

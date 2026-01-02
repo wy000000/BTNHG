@@ -16,15 +16,13 @@ import copy
 from BTNHGV2HeteroDataClass import BTNHGV2HeteroDataClass
 from resultAnalysisClass import resultAnalysisClass
 
-class ModelTrainerTesterClass:
+class HeteroModelTrainerTesterClass:
 	def __init__(self, model,				
 				device=None,				
 				lr=BTNHGV2ParameterClass.lr,
 				weight_decay=BTNHGV2ParameterClass.weight_decay,
 				epochs=BTNHGV2ParameterClass.epochs,
 				patience=BTNHGV2ParameterClass.patience,
-				# loss_threshold=BTNHGV2ParameterClass.loss_threshold,
-				# stoppableLoss=BTNHGV2ParameterClass.stoppableLoss,
 				useTrainWeight=BTNHGV2ParameterClass.useTrainWeight,
 				min_delta=BTNHGV2ParameterClass.min_delta):
 		"""
