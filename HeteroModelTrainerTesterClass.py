@@ -42,7 +42,8 @@ class HeteroModelTrainerTesterClass:
 		else:
 			self._device = device
 		print(f"using device: {self._device}")
-		self._model = model		
+		self._model = model
+		self.modelName=self._model.__class__.__name__
 		self._epochs = epochs
 		self._useTrainWeight=useTrainWeight	
 		self._lr = lr
@@ -83,8 +84,6 @@ class HeteroModelTrainerTesterClass:
 		self._model.train()
 		total_loss = 0
 		total_batches = 0
-		self.modelName=self._model.__class__.__name__
-
 
 		# 遍历 neighborLoader 提供的批次
 		for batch in nbLoader:
@@ -133,7 +132,7 @@ class HeteroModelTrainerTesterClass:
 		loss=float("inf")
 		counter=0
 		epoch=0
-		epochDisplay=BTNHGV2ParameterClass.epochsDisplay
+		epochDisplay=BTNHGV2ParameterClass.epochsDisplay_hetero
 		earlyStopping=EarlyStoppingClass()		
 		epoch_loss_list=[]
 

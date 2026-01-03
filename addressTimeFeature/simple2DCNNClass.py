@@ -1,9 +1,11 @@
+from BTNHGV2ParameterClass import BTNHGV2ParameterClass
+from addressTimeDataClass import addressTimeDataClass
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from BTNHGV2ParameterClass import BTNHGV2ParameterClass
 from ExtendedNNModule import ExtendedNNModule
 from torch.utils.data import TensorDataset
+from torch.utils.data import TensorDataset, DataLoader
 
 class simple2DCNNClass(ExtendedNNModule):
 	"""
@@ -14,7 +16,7 @@ class simple2DCNNClass(ExtendedNNModule):
 	- num_blocks: 区块数量 (5621)
 	- num_features: 每个区块的特征数量 (13)
 	"""
-	def __init__(self, dataSet:TensorDataset,
+	def __init__(self, addressTimeDataCls:addressTimeDataClass,
 				 cnn_in_channels=1,  # 输入通道数
 				 cnn_out_channels=BTNHGV2ParameterClass.cnn_out_channels,  # 输出通道数
 				 cnn_hidden_channels=BTNHGV2ParameterClass.cnn_hidden_channels,  # 隐藏层通道数
@@ -24,16 +26,18 @@ class simple2DCNNClass(ExtendedNNModule):
 				 cnn_kernel_size=BTNHGV2ParameterClass.cnn_kernel_size):  # Dropout率
 		
 		super().__init__()
-
-		self.feature_dim = dataSet.tensors[0].shape[-1]
-		self.seq_len = dataSet.tensors[0].shape[-2]
+		self.addressTimeDataCls = addressTimeDataCls
+		# self.dataLoader = dataLoader
+		# self.dataSet = dataLoader.dataset
+		self.feature_dim = self.dataSet.tensors[0].shape[-1]
+		self.seq_len = self.dataSet.tensors[0].shape[-2]
 		self.cnn_in_channels = cnn_in_channels
 		self.cnn_hidden_channels = cnn_hidden_channels
 		self.cnn_out_channels = cnn_out_channels
 		self.pool_width = pool_width
 		self.pool_height = pool_height
 		self.cnn_kernel_size = cnn_kernel_size
-		self.num_classes = dataSet.tensors[1].unique().numel()
+		self.num_classes = self.dataSet.tensors[1].unique().numel()
 		self.dropout_rate = dropout_rate
 
 		
