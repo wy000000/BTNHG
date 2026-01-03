@@ -58,7 +58,13 @@ class BTNHGV2ParameterClass():
 			cls._rng = np.random.default_rng(seed)
 		return int(cls._rng.integers(0, 4294967296))
 	
-	#######################################
+	################# address Time Feature ######################
+	cnn_hidden_channels=8
+	cnn_out_channels=8
+	cnn_kernel_size=3
+	pool_width=1
+	pool_height=2
+
 
 	
 

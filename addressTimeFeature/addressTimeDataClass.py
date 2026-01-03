@@ -25,7 +25,7 @@ class addressTimeDataClass:
 		if dataPath is None:
 			dataPath=self._dataPath
 		#读取所有数据
-		addressTime_data_df = pd.read_csv(os.path.join(dataPath, "addressTimeData-full.csv"))
+		addressTime_data_df = pd.read_csv(os.path.join(dataPath, "addressTimeData.csv"))
 		print("读取完成。addressTime_data_df.shape=",addressTime_data_df.shape)
 		return addressTime_data_df
 	
