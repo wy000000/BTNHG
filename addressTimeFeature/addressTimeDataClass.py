@@ -17,8 +17,11 @@ class addressTimeDataClass:
 		# 初始化 address_dict 为空字典
 		# 键：addressID
 		# 值：包含 clusterID 和 addressTimeFeatureCls 的字典
-		self.address_dict = {}
-		self._processAddressTimeData()
+		self.address_dict = self._processAddressTimeData()
+		self.dataSet=self._get_address_time_feature_dataSet()
+		
+
+
 		
 	def _loadAddressTimeData(self, dataPath:str=None)->pd.DataFrame:
 		print("start read addressTimeData")
@@ -34,7 +37,7 @@ class addressTimeDataClass:
 		rowCount = self.addressTime_data_df.shape[0]
 		
 		# 使用字典存储addressTimeFeatureCls实例
-		address_dict = self.address_dict
+		address_dict = {}
 
 		# 使用itertuples()代替iterrows()，速度更快
 		for i, row_tuple in enumerate(self.addressTime_data_df.itertuples(index=False)):
@@ -72,20 +75,20 @@ class addressTimeDataClass:
 		# print(list(self.address_dict.items())[:64])
 		return address_dict
 	
-	def get_address_time_feature_dataSet(self):
+	def _get_address_time_feature_dataSet(self):
 		"""
 		生成用于训练的DataLoader，包含地址的时间特征数据
 		返回:
 			TensorDataset: 包含时间特征数据的Dataset
 		"""
-		
+		addressDict=self.address_dict
 		# 1. 获取地址总数和特征形状
-		num_addresses = len(self.address_dict)
+		num_addresses = len(addressDict)
 		if num_addresses == 0:
 			return None
 		
 		# 获取第一个地址的特征形状
-		first_address = next(iter(self.address_dict.values()))
+		first_address = next(iter(addressDict.values()))
 		first_features = first_address["addressTimeFeatureCls"].block_features
 		feature_shape = first_features.shape
 		
@@ -96,7 +99,7 @@ class addressTimeDataClass:
 		labels_np = np.zeros(num_addresses, dtype=np.int64)
 		
 		# 3. 填充数据
-		for i, (addressID, value) in enumerate(self.address_dict.items()):
+		for i, (addressID, value) in enumerate(addressDict.items()):
 			addressTimeFeatureCls = value["addressTimeFeatureCls"]
 			features_np[i] = addressTimeFeatureCls.block_features.astype(np.float32)
 			labels_np[i] = value["clusterID"]
@@ -110,22 +113,14 @@ class addressTimeDataClass:
 		# dataLoader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)		
 		return dataset
 	
-	def get_address_time_feature_dataLoader(self,
+
+	def get_address_time_feature_trainLoader_TestLoaser(self,
 			batch_size=BTNHGV2ParameterClass.batch_size,
 			shuffle=BTNHGV2ParameterClass.shuffle):
-		"""
-		生成用于训练的DataLoader，包含地址的时间特征数据
-		返回:
-			DataLoader: 包含时间特征数据的DataLoader
-		"""
-		# 1. 获取完整数据集
-		dataset = self.get_address_time_feature_dataSet()
-		if dataset is None:
-			return None
 		
-		# 2. 构造DataLoader
-		dataLoader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)		
-		return dataLoader
+		
+		return
+
 
 	def get_address_time_feature_KFold_dataLoader(self,
 		k=BTNHGV2ParameterClass.kFold_k,
@@ -160,16 +155,16 @@ class addressTimeDataClass:
 		for train_idx, val_idx in skf.split(features, labels):
 			# 创建训练和验证子集
 			train_dataset = TensorDataset(features[train_idx], labels[train_idx])
-			val_dataset = TensorDataset(features[val_idx], labels[val_idx])
+			test_dataset = TensorDataset(features[val_idx], labels[val_idx])
 			
 			# 创建DataLoader
 			train_dataLoader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle)
-			val_dataLoader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+			test_dataLoader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 			
 			# 添加到结果列表
-			kfold_dataLoaders.append((train_dataLoader, val_dataLoader))
+			kfold_dataLoaders.append((train_dataLoader, test_dataLoader))
 		
-		return kfold_dataLoaders	
+		return kfold_dataLoaders
 
 
 # atd=addressTimeDataClass()

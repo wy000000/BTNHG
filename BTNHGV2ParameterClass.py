@@ -7,7 +7,7 @@ class BTNHGV2ParameterClass():
 	###############################	
 	epochs=512
 	###############################
-	epochsDisplay=4
+	epochsDisplay_hetero=4
 	lr=0.01
 	# max_norm=100000000.0
 	dropout=0.35
@@ -64,6 +64,8 @@ class BTNHGV2ParameterClass():
 	cnn_kernel_size=3
 	pool_width=1
 	pool_height=2
+
+	epochsDisplay_atf=4
 
 
 	
