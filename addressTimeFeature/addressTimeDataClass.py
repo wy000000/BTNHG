@@ -7,6 +7,7 @@ import torch
 from torch.utils.data import TensorDataset, DataLoader
 import numpy as np
 from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import train_test_split
 
 class addressTimeDataClass:
 	def __init__(self,
@@ -18,10 +19,12 @@ class addressTimeDataClass:
 		# 键：addressID
 		# 值：包含 clusterID 和 addressTimeFeatureCls 的字典
 		self.address_dict = self._processAddressTimeData()
-		self.dataSet=self._get_address_time_feature_dataSet()
-		
 
+		self.dataSet = self._build_address_time_feature_dataSet()
 
+		self.train_dataLoader, self.test_dataLoader\
+			=self.build_address_time_feature_trainLoader_testLoaser()
+		self.kFold_dataloaders=self.build_address_time_feature_KFold_dataLoaders()
 		
 	def _loadAddressTimeData(self, dataPath:str=None)->pd.DataFrame:
 		print("start read addressTimeData")
@@ -33,6 +36,7 @@ class addressTimeDataClass:
 		return addressTime_data_df
 	
 	def _processAddressTimeData(self):
+		print("start process address time data")
 		time1 = time.time()
 		rowCount = self.addressTime_data_df.shape[0]
 		
@@ -68,19 +72,19 @@ class addressTimeDataClass:
 		print("时间特性处理完成。address_dict长度=",len(address_dict))
 		# 输出处理时间 时：分：秒
 		print("时间特性处理耗时：{}时{}分{}秒".format(int((time2-time1)//3600), int((time2-time1)//60), int((time2-time1)%60)))
-		#输出当前时间
-		print("当前时间：{}".format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
 	
 		# #输出self.address_dict前64个元素
 		# print(list(self.address_dict.items())[:64])
 		return address_dict
 	
-	def _get_address_time_feature_dataSet(self):
+	def _build_address_time_feature_dataSet(self):
 		"""
-		生成用于训练的DataLoader，包含地址的时间特征数据
+		生成DataSet，包含地址的时间特征数据
 		返回:
 			TensorDataset: 包含时间特征数据的Dataset
 		"""
+		print("start build TensorDataset")
+		time1 = time.time()
 		addressDict=self.address_dict
 		# 1. 获取地址总数和特征形状
 		num_addresses = len(addressDict)
@@ -99,30 +103,74 @@ class addressTimeDataClass:
 		labels_np = np.zeros(num_addresses, dtype=np.int64)
 		
 		# 3. 填充数据
-		for i, (addressID, value) in enumerate(addressDict.items()):
+		address_items = list(addressDict.items())
+		addressCount = len(address_items)
+		for i, (addressID, value) in enumerate(address_items):
 			addressTimeFeatureCls = value["addressTimeFeatureCls"]
 			features_np[i] = addressTimeFeatureCls.block_features.astype(np.float32)
 			labels_np[i] = value["clusterID"]
+			if (i+1)%2001==0:
+				print("已完成{}行，进度{:.2f}%".format(i, i/addressCount*100))				
 		
 		# 4. 转换为Tensor
-		features = torch.tensor(features_np, dtype=torch.float32)
-		labels = torch.tensor(labels_np, dtype=torch.long)
+		features = torch.from_numpy(features_np)
+		labels = torch.from_numpy(labels_np)
 		
-		# 5. 构造Dataset和DataLoader
+		# 5. 构造Dataset
 		dataset = TensorDataset(features, labels)
-		# dataLoader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)		
-		return dataset
-	
+		# dataLoader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+		time2=time.time()
+		usedTime=time2-time1
+		# 输出处理时间 时：分：秒
+		print("build TensorDataset used time: {}时{}分{}秒"\
+			.format(int(usedTime//3600), int((usedTime)//60), int(usedTime%60)))
+		return dataset	
 
-	def get_address_time_feature_trainLoader_TestLoaser(self,
+	def build_address_time_feature_trainLoader_testLoaser(self,
+			train_size=BTNHGV2ParameterClass.train_size,
 			batch_size=BTNHGV2ParameterClass.batch_size,
-			shuffle=BTNHGV2ParameterClass.shuffle):
+			shuffle=BTNHGV2ParameterClass.shuffle,
+			resetSeed=BTNHGV2ParameterClass.resetSeed):
+		print("start build trainLoader and testLoaser")
+		time1 = time.time()
+		# 检查是否有数据集
+		if self.dataSet is None:
+			self.dataSet = self._build_address_time_feature_dataSet()
+		if self.dataSet is None:
+			return None, None
 		
+		# 直接获取tensor，避免不必要的转换
+		features, labels = self.dataSet.tensors
+
+		# 随机种子
+		randSeed = BTNHGV2ParameterClass.rand(resetSeed)
+
+		# 将tensor转换为numpy以用于sklearn的train_test_split
+		X = features.numpy() if not isinstance(features, np.ndarray) else features
+		y = labels.numpy() if not isinstance(labels, np.ndarray) else labels
+		X_train, X_test, y_train, y_test = train_test_split( X, y,
+													train_size=train_size, # 测试集占比
+													random_state=randSeed, # 保证可复现
+													stratify=y # 保持类别比例一致
+													)		
 		
-		return
+		# 直接从numpy数组创建tensor，避免额外转换
+		train_dataset = TensorDataset(torch.from_numpy(X_train), torch.from_numpy(y_train))
+		test_dataset = TensorDataset(torch.from_numpy(X_test), torch.from_numpy(y_test))
 
+		# 创建 DataLoader
+		train_dataLoader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle)
+		test_dataLoader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-	def get_address_time_feature_KFold_dataLoader(self,
+		time2=time.time()
+		usedTime=time2-time1
+		# 输出处理时间 时：分：秒
+		print("build trainLoader and testLoaser used time: {}时{}分{}秒"\
+			.format(int(usedTime//3600), int((usedTime)//60), int(usedTime%60)))
+		
+		return train_dataLoader, test_dataLoader
+
+	def build_address_time_feature_KFold_dataLoaders(self,
 		k=BTNHGV2ParameterClass.kFold_k,
 		batch_size=BTNHGV2ParameterClass.batch_size,
 		shuffle=BTNHGV2ParameterClass.shuffle,
@@ -139,30 +187,57 @@ class addressTimeDataClass:
 		返回:
 			list: 包含k个元组的列表，每个元组包含(train_dataLoader, val_dataLoader)
 		"""
-		# 1. 获取完整数据集
-		dataset = self.get_address_time_feature_dataSet()
-		if dataset is None:
+		print("start build KFold dataLoaders")
+		time1 = time.time()
+		# 检查是否有数据集
+		if self.dataSet is None:
+			self.dataSet = self._build_address_time_feature_dataSet()
+		if self.dataSet is None:
 			return None
+		
+		# 1. 获取完整数据集
+		dataset = self.dataSet
 		
 		# 2. 获取特征和标签
 		features, labels = dataset.tensors
 		
 		# 3. 初始化KFold
 		skf = StratifiedKFold(n_splits=k, shuffle=shuffle, random_state=random_state)
-		
+		# 预计算所有索引，避免重复切片操作
+		indices = list(skf.split(features, labels))
+
 		# 4. 生成每折的DataLoader
 		kfold_dataLoaders = []
-		for train_idx, val_idx in skf.split(features, labels):
+		for fold_idx, (train_idx, val_idx) in enumerate(indices):
+			# 显示第k折
+			print(f"Processing fold {fold_idx + 1}/{k}")
+
 			# 创建训练和验证子集
 			train_dataset = TensorDataset(features[train_idx], labels[train_idx])
 			test_dataset = TensorDataset(features[val_idx], labels[val_idx])
 			
 			# 创建DataLoader
-			train_dataLoader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle)
-			test_dataLoader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+			train_dataLoader = DataLoader(train_dataset
+								,batch_size=batch_size
+								,shuffle=shuffle
+								# ,num_workers=0 # 根据需要可以增加此值
+								# ,pin_memory=False  # 如果有GPU可以设置为True
+								)
 			
+			test_dataLoader = DataLoader(test_dataset
+								,batch_size=batch_size
+								,shuffle=False
+								# ,num_workers=0  # 根据需要可以增加此值
+								# ,pin_memory=False  # 如果有GPU可以设置为True
+								)
 			# 添加到结果列表
 			kfold_dataLoaders.append((train_dataLoader, test_dataLoader))
+				
+		time2=time.time()
+		usedTime=time2-time1
+		# 输出处理时间 时：分：秒
+		print("build KFold dataLoaders used time: {}时{}分{}秒"\
+			.format(int(usedTime//3600), int((usedTime)//60), int(usedTime%60)))
 		
 		return kfold_dataLoaders
 
