@@ -5,8 +5,10 @@ import numpy as np
 import time
 import os
 import copy
+import torch.nn.functional as F
 from EarlyStoppingClass import EarlyStoppingClass
 from BTNHGV2ParameterClass import BTNHGV2ParameterClass
+from resultAnalysisClass import resultAnalysisClass
 
 class DataSetModelTrainerTesterClass2:
 	def __init__(self, model,				
@@ -49,11 +51,11 @@ class DataSetModelTrainerTesterClass2:
 		correct = 0
 		totalLables = 0
 
-
-		dataLoader=self._model.
-		for batch_idx, (inputs, labels) in enumerate(dataLoader):
+		train_dataLoader=self._model.train_dataLoader
+		
+		for batch_idx, (inputs, labels) in enumerate(train_dataLoader):
 			# 移动数据到设备
-			inputs, labels = inputs.to(self.device), labels.to(self.device)
+			inputs, labels = inputs.to(self._device), labels.to(self._device)
 			
 			# 梯度清零
 			self._optimizer.zero_grad()
@@ -81,7 +83,7 @@ class DataSetModelTrainerTesterClass2:
 			# 	print(f'Batch {batch_idx}/{len(self.train_loader)}, Loss: {loss.item():.4f}')
 		
 		# 计算平均损失和准确率
-		avg_loss = running_loss / len(dataLoader)
+		avg_loss = running_loss / len(train_dataLoader)
 		accuracy = 100. * correct / totalLables
 		
 		return avg_loss, accuracy
@@ -153,5 +155,51 @@ class DataSetModelTrainerTesterClass2:
 		all_probs = []
 		all_preds = []
 		
+		test_dataLoader=self._model.test_dataLoader
+
 		with torch.no_grad():
-			for inputs, labels in self.test_loader:
+			for inputs, labels in test_dataLoader:
+				# 移动数据到设备
+				inputs, labels = inputs.to(self.device), labels.to(self.device)
+				
+				# 前向传播
+				logits = self._model(inputs)
+				
+				# 保存结果
+				y_true = labels
+				probs = F.softmax(logits, dim=-1)
+				pred = probs.argmax(dim=-1)
+
+				# 收集到列表
+				all_y_true.append(y_true.cpu())
+				all_probs.append(probs.cpu())
+				all_preds.append(pred.cpu())
+		# 一次性拼接
+		self._model.all_y_true = torch.cat(all_y_true, dim=0)
+		self._model.all_probs = torch.cat(all_probs, dim=0)
+		self._model.all_preds = torch.cat(all_preds, dim=0)
+
+		time2 = time.time()
+		print(f"测试用时: {time2 - time1}")
+		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
+	
+	def kFold_train_test(self):
+		print("start kFold_train_test")
+		time1 = time.time()
+		dataLoaders=self._model.addressTimeDataCls.kFold_dataloaders
+		k=1
+		for train_dataloader, test_dataloader in dataLoaders:
+			print(f"{k} Fold, total {self._model.kFold_k} fold")
+			self._model.train_dataLoader=train_dataloader
+			self._model.test_dataLoader=test_dataloader
+			self.train()
+			self.test()
+			k+=1
+			result=resultAnalysisClass(self._model)
+			self._model.kFold_evaluations.append(result.model.evaluationMetrics)
+
+		time2 = time.time()
+		kFoldTimeStr=time.strftime('%H:%M:%S', time.gmtime(time2 - time1))
+		self._model.kFold_training_time=kFoldTimeStr
+		print(f"kFold_train_test用时: {time2 - time1}")
+		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")

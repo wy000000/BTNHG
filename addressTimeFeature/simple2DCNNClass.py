@@ -4,7 +4,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from ExtendedNNModule import ExtendedNNModule
-from torch.utils.data import TensorDataset
 from torch.utils.data import TensorDataset, DataLoader
 
 class simple2DCNNClass(ExtendedNNModule):
@@ -27,8 +26,10 @@ class simple2DCNNClass(ExtendedNNModule):
 		
 		super().__init__()
 		self.addressTimeDataCls = addressTimeDataCls
-		# self.dataLoader = dataLoader
-		# self.dataSet = dataLoader.dataset
+		self.dataSet = self.addressTimeDataCls.dataSet
+		# self.train_dataLoader = self.addressTimeDataCls.train_dataLoader
+		# self.test_dataLoader = self.addressTimeDataCls.test_dataLoader
+		# self.kfoldLoader = self.addressTimeDataCls.kFold_dataloaders
 		self.feature_dim = self.dataSet.tensors[0].shape[-1]
 		self.seq_len = self.dataSet.tensors[0].shape[-2]
 		self.cnn_in_channels = cnn_in_channels

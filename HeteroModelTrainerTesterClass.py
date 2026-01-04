@@ -240,8 +240,6 @@ class HeteroModelTrainerTesterClass:
 			self.train()
 			self.test()
 			k+=1
-			self.train()
-			self.test()
 			result=resultAnalysisClass(self._model)
 			self._model.kFold_evaluations.append(result.model.evaluationMetrics)
 
