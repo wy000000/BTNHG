@@ -103,6 +103,7 @@ class DataSetModelTrainerTesterClass2:
 		epochDisplay=BTNHGV2ParameterClass.epochsDisplay_atf
 		earlyStopping=EarlyStoppingClass()		
 		epoch_loss_list=[]
+		
 
 		for epoch in range(1, self._epochs + 1):
 			## 训练一个 epoch

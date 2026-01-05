@@ -327,8 +327,11 @@ class BTNHGV2HeteroDataClass():
 		# 获取标签
 		labels = self.heteroData['address'].y[labeled_address_indices].cpu().numpy()
 
+		# 随机种子
+		randSeed = BTNHGV2ParameterClass.rand(resetSeed)
+
 		# 定义分层K折
-		skf = StratifiedKFold(n_splits=kFold_k, shuffle=shuffle, random_state=resetSeed)
+		skf = StratifiedKFold(n_splits=kFold_k, shuffle=shuffle, random_state=randSeed)
 
 		# 保存每折的mask
 		masks = []

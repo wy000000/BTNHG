@@ -46,6 +46,7 @@ class BTNHGV2ParameterClass():
 	modelStateDictFileName="model.state_dict.pt"
 	fullModelFileName="fullModel.pt"
 	kFold_evaluationMetricsFileName="kFold_evaluationMetrics.xlsx"
+	addressTimeFeature_dataSet_name="addressTimeFeature_dataSet.pt"
 	save=True
 	saveModelStateDict=True
 	saveFullModel=False
