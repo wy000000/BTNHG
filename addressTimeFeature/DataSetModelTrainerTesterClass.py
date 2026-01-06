@@ -58,50 +58,7 @@ class DataSetModelTrainerTesterClass:
 		
 		self._train(trainLoader)
 		self._test(testLoader)
-
-	def _train_one_epoch(self, train_dataLoader):
-		self._model = self._model.to(self._device)
-		self._model.train()
-		running_loss = 0.0
-		correct = 0
-		totalLables = 0
-
-		# train_dataLoader=self._model.train_dataLoader
-		
-		for batch_idx, (inputs, labels) in enumerate(train_dataLoader):
-			# 移动数据到设备
-			inputs, labels = inputs.to(self._device), labels.to(self._device)
-			
-			# 梯度清零
-			self._optimizer.zero_grad()
-			
-			# 前向传播
-			outputs = self._model(inputs)
-			
-			# 计算损失
-			loss = self.criterion(outputs, labels)
-			
-			# 反向传播
-			loss.backward()
-			
-			# 优化
-			self._optimizer.step()
-			
-			# 统计损失和准确率
-			running_loss += loss.item()
-			_, predicted = outputs.max(1)
-			totalLables += labels.size(0)
-			correct += predicted.eq(labels).sum().item()
-			
-			# 打印训练进度			
-			if batch_idx % 50 == 0:
-				print(f'Batch {batch_idx}/{len(train_dataLoader)}, Loss: {loss.item():.4f}')
-		
-		# 计算平均损失和准确率
-		avg_loss = running_loss / len(train_dataLoader)
-		accuracy = 100. * correct / totalLables
-		
-		return avg_loss, accuracy
+		return	
 
 	def _train(self, trainLoader):
 		"""
@@ -162,6 +119,50 @@ class DataSetModelTrainerTesterClass:
 			self._model.kFold_best_model_state=copy.deepcopy(self._model.state_dict())
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 		
+	def _train_one_epoch(self, train_dataLoader):
+		self._model = self._model.to(self._device)
+		self._model.train()
+		running_loss = 0.0
+		correct = 0
+		totalLables = 0
+
+		# train_dataLoader=self._model.train_dataLoader
+		
+		for batch_idx, (inputs, labels) in enumerate(train_dataLoader):
+			# 移动数据到设备
+			inputs, labels = inputs.to(self._device), labels.to(self._device)
+			
+			# 梯度清零
+			self._optimizer.zero_grad()
+			
+			# 前向传播
+			outputs = self._model(inputs)
+			
+			# 计算损失
+			loss = self.criterion(outputs, labels)
+			
+			# 反向传播
+			loss.backward()
+			
+			# 优化
+			self._optimizer.step()
+			
+			# 统计损失和准确率
+			running_loss += loss.item()
+			_, predicted = outputs.max(1)
+			totalLables += labels.size(0)
+			correct += predicted.eq(labels).sum().item()
+			
+			# 打印训练进度			
+			if batch_idx % 1 == 0:
+				print(f'Batch {batch_idx}/{len(train_dataLoader)}, Loss: {loss.item():.4f}')
+		
+		# 计算平均损失和准确率
+		avg_loss = running_loss / len(train_dataLoader)
+		accuracy = 100. * correct / totalLables
+		
+		return avg_loss, accuracy
+
 	def _test(self, test_dataLoader):
 		print("start test")
 		time1 = time.time()

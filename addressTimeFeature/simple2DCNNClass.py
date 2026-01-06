@@ -96,6 +96,10 @@ class simple2DCNNClass(ExtendedNNModule):
 		返回:
 			output: 输出张量，形状为 [batch_size, num_classes]
 		"""
+	
+		x = x.unsqueeze(1)
+		# print(f"x shape: {x.shape}")
+
 		# 卷积层1 -> 批量归一化 -> ReLU -> 池化
 		x = self.pool1(F.relu(self.bn1(self.conv1(x))))
 		

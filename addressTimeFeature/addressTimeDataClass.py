@@ -104,6 +104,38 @@ class addressTimeDataClass:
 		"""
 		print("start build self.addressTimeFeature_dataSet")
 		time1 = time.time()
+
+		# # 收集所有 clusterID 和特征
+		# cluster_ids = []
+		# features_list = []
+		# for v in addressDict.values():
+		# 	cluster_ids.append(v["clusterID"])
+		# 	features_list.append(v["addressTimeFeatureCls"].block_features.astype(np.float32))
+
+		# # 转为 NumPy 数组
+		# features_np = np.stack(features_list)   # shape: (N, d1, d2) 或 (N, d)
+		# cluster_ids = np.array(cluster_ids)
+		# time4=time.time()
+		# print("创建features_np和cluster_ids耗时: {}时{}分{}秒"\
+		# 	.format(int((time4-time1)//3600), int((time4-time1)//60), int((time4-time1)%60)))
+		
+		# time3=time.time()
+		# # 将非连续 clusterID 映射为连续整数
+		# unique_ids, labels_np = np.unique(cluster_ids, return_inverse=True)
+		# time4=time.time()
+		# print("标签连续化用时: {}时{}分{}秒"\
+		# 	.format(int((time4-time3)//3600), int((time4-time3)//60), int((time4-time3)%60)))
+
+
+		# # 转为 PyTorch Tensor
+		# features = torch.from_numpy(features_np)
+		# labels = torch.from_numpy(labels_np).long()
+
+		# # 构建 TensorDataset
+		# dataSet = TensorDataset(features, labels)
+
+		#####################################################
+
 		# print(time.strftime('%m-%d %H:%M:%S', time.localtime()))
 		# 1. 获取地址总数和特征形状
 		num_addresses = len(addressDict)
@@ -129,10 +161,18 @@ class addressTimeDataClass:
 			features_np[i] = addressTimeFeatureCls.block_features.astype(np.float32)
 			labels_np[i] = value["clusterID"]
 			if (i+1)%2001==0:
-				print("已完成{}行，进度{:.2f}%".format(i, i/addressCount*100))				
+				print("已完成{}行，进度{:.2f}%".format(i, i/addressCount*100))
+		
+		# time3=time.time()
+		# 将非连续 clusterID 映射为连续整数
+		unique_ids, labels_np = np.unique(labels_np, return_inverse=True)
+		# time4=time.time()
+		# print("标签连续化用时: {}时{}分{}秒"\
+		# 	.format(int((time4-time3)//3600), int((time4-time3)//60), int((time4-time3)%60)))
 		
 		# 4. 转换为Tensor
 		features = torch.from_numpy(features_np)
+		# features = features.unsqueeze(1)
 		labels = torch.from_numpy(labels_np)
 		
 		# 5. 构造Dataset
