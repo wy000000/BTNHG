@@ -14,10 +14,16 @@ class addressTimeDataClass:
 	def __init__(self,
 		dataPath=BTNHGV2ParameterClass.dataPath):
 		self._dataPath=dataPath
-		# self._zipMethod=lz4.frame
-		self.addressTimeFeature_dataSet=self.get_address_time_feature_dataSet()
-		# self.addressTime_data_df=self._loadAddressTimeData()
 
+		self.addressTimeFeature_dataSet=self.get_address_time_feature_dataSet()
+		# self.feature_dim=self.addressTimeFeature_dataSet.tensors[0].shape[-1]
+		# self.seq_len = self.addressTimeFeature_dataSet.tensors[0].shape[-2]
+		# self.num_classes = self.addressTimeFeature_dataSet.tensors[1].unique().numel()
+
+
+
+		# self.addressTime_data_df=self._loadAddressTimeData()
+		# self._zipMethod=lz4.frame
 		# # 初始化 address_dict 为空字典
 		# # 键：addressID
 		# # 值：包含 clusterID 和 addressTimeFeatureCls 的字典
@@ -221,21 +227,21 @@ class addressTimeDataClass:
 	# 	return self.addressTimeFeature_dataSet
 	# endregion
 
-	def build_address_time_feature_trainLoader_testLoaser(self,
+	def get_address_time_feature_trainLoader_testLoaser(self,
 			train_size=BTNHGV2ParameterClass.train_size,
-			batch_size=BTNHGV2ParameterClass.batch_size,
+			batch_size=BTNHGV2ParameterClass.cnn_batch_size,
 			shuffle=BTNHGV2ParameterClass.shuffle,
 			resetSeed=BTNHGV2ParameterClass.resetSeed):
 		print("start build trainLoader and testLoaser")
 		time1 = time.time()
 		# 检查是否有数据集
-		if self.dataSet is None:
-			self.dataSet = self._build_address_time_feature_dataSet()
-		if self.dataSet is None:
+		if self.addressTimeFeature_dataSet is None:
+			self.addressTimeFeature_dataSet = self.get_address_time_feature_dataSet()
+		if self.addressTimeFeature_dataSet is None:
 			return None, None
 		
 		# 直接获取tensor，避免不必要的转换
-		features, labels = self.dataSet.tensors
+		features, labels = self.addressTimeFeature_dataSet.tensors
 
 		# 随机种子
 		randSeed = BTNHGV2ParameterClass.rand(resetSeed)
@@ -247,7 +253,7 @@ class addressTimeDataClass:
 													train_size=train_size, # 测试集占比
 													random_state=randSeed, # 保证可复现
 													stratify=y # 保持类别比例一致
-													)		
+													)
 		
 		# 直接从numpy数组创建tensor，避免额外转换
 		train_dataset = TensorDataset(torch.from_numpy(X_train), torch.from_numpy(y_train))
@@ -265,9 +271,9 @@ class addressTimeDataClass:
 		
 		return train_dataLoader, test_dataLoader
 
-	def build_address_time_feature_KFold_indices(self,
+	def get_address_time_feature_KFold_indices(self,
 		k=BTNHGV2ParameterClass.kFold_k,
-		# batch_size=BTNHGV2ParameterClass.batch_size,
+		batch_size=BTNHGV2ParameterClass.cnn_batch_size,
 		shuffle=BTNHGV2ParameterClass.shuffle,
 		resetSeed=BTNHGV2ParameterClass.resetSeed):
 		"""
@@ -284,16 +290,16 @@ class addressTimeDataClass:
 		print("start build KFold indices")
 		time1 = time.time()
 		# 检查是否有数据集
-		if self.dataSet is None:
-			self.dataSet = self._build_address_time_feature_dataSet()
-		if self.dataSet is None:
+		if self.addressTimeFeature_dataSet is None:
+			self.addressTimeFeature_dataSet = self._build_address_time_feature_dataSet()
+		if self.addressTimeFeature_dataSet is None:
 			return None
 		
 		# 1. 获取完整数据集
-		dataset = self.dataSet
+		dataset = self.addressTimeFeature_dataSet
 		
 		# 2. 获取特征和标签
-		features, labels = self.dataSet.tensors
+		features, labels = self.addressTimeFeature_dataSet.tensors
 
 		# 随机种子
 		randSeed = BTNHGV2ParameterClass.rand(resetSeed)
