@@ -6,12 +6,14 @@ import time
 import os
 import copy
 import torch.nn.functional as F
+from torch.utils.data import TensorDataset, DataLoader
+
 from EarlyStoppingClass import EarlyStoppingClass
 from BTNHGV2ParameterClass import BTNHGV2ParameterClass
 from resultAnalysisClass import resultAnalysisClass
 
-class DataSetModelTrainerTesterClass2:
-	def __init__(self, model,				
+class DataSetModelTrainerTesterClass:
+	def __init__(self, model,
 				device=None,				
 				lr=BTNHGV2ParameterClass.lr,
 				weight_decay=BTNHGV2ParameterClass.weight_decay,
@@ -44,14 +46,27 @@ class DataSetModelTrainerTesterClass2:
 		self._min_delta=min_delta
 		self._patience = patience
 
-	def _train_one_epoch(self):
+	def train_test(self, trainLoader=None, testLoader=None):
+		if (trainLoader is None and testLoader is not None)\
+			or (trainLoader is not None and testLoader is None):
+			print("trainLoader and testLoader must be provided together.")
+			return
+		
+		if trainLoader is None and testLoader is None:
+			trainLoader, testLoader \
+			= self._model.addressTimeDataCls.get_address_time_feature_trainLoader_testLoaser()
+		
+		self._train(trainLoader)
+		self._test(testLoader)
+
+	def _train_one_epoch(self, train_dataLoader):
 		self._model = self._model.to(self._device)
 		self._model.train()
 		running_loss = 0.0
 		correct = 0
 		totalLables = 0
 
-		train_dataLoader=self._model.train_dataLoader
+		# train_dataLoader=self._model.train_dataLoader
 		
 		for batch_idx, (inputs, labels) in enumerate(train_dataLoader):
 			# 移动数据到设备
@@ -70,7 +85,7 @@ class DataSetModelTrainerTesterClass2:
 			loss.backward()
 			
 			# 优化
-			self.optimizer.step()
+			self._optimizer.step()
 			
 			# 统计损失和准确率
 			running_loss += loss.item()
@@ -78,9 +93,9 @@ class DataSetModelTrainerTesterClass2:
 			totalLables += labels.size(0)
 			correct += predicted.eq(labels).sum().item()
 			
-			# # 打印训练进度
-			# if batch_idx % 10 == 0:
-			# 	print(f'Batch {batch_idx}/{len(self.train_loader)}, Loss: {loss.item():.4f}')
+			# 打印训练进度			
+			if batch_idx % 50 == 0:
+				print(f'Batch {batch_idx}/{len(train_dataLoader)}, Loss: {loss.item():.4f}')
 		
 		# 计算平均损失和准确率
 		avg_loss = running_loss / len(train_dataLoader)
@@ -88,12 +103,12 @@ class DataSetModelTrainerTesterClass2:
 		
 		return avg_loss, accuracy
 
-	def train(self):
+	def _train(self, trainLoader):
 		"""
 		完整训练流程
 		:return: 训练历史记录
 		"""
-		print(f"开始训练模型，使用设备: {self.device}")
+		print(f"开始训练模型，使用设备: {self._device}")
 
 		time1 = time.time()
 		best_loss = float("inf")
@@ -101,13 +116,14 @@ class DataSetModelTrainerTesterClass2:
 		counter=0
 		epoch=0
 		epochDisplay=BTNHGV2ParameterClass.epochsDisplay_atf
-		earlyStopping=EarlyStoppingClass()		
+		earlyStopping=EarlyStoppingClass()
 		epoch_loss_list=[]
-		
+		# trainLoader, testLoader \
+		# 	= self._model.addressTimeDataCls.get_address_time_feature_trainLoader_testLoaser()
 
 		for epoch in range(1, self._epochs + 1):
 			## 训练一个 epoch
-			loss, accuracy = self._train_one_epoch()
+			loss, accuracy = self._train_one_epoch(trainLoader)
 
 			stop=earlyStopping(loss, self._model, epoch)
 
@@ -146,7 +162,7 @@ class DataSetModelTrainerTesterClass2:
 			self._model.kFold_best_model_state=copy.deepcopy(self._model.state_dict())
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 		
-	def test(self):
+	def _test(self, test_dataLoader):
 		print("start test")
 		time1 = time.time()
 		self._model = self._model.to(self._device)
@@ -156,7 +172,7 @@ class DataSetModelTrainerTesterClass2:
 		all_probs = []
 		all_preds = []
 		
-		test_dataLoader=self._model.test_dataLoader
+		# test_dataLoader=self._model.test_dataLoader
 
 		with torch.no_grad():
 			for inputs, labels in test_dataLoader:
@@ -184,18 +200,45 @@ class DataSetModelTrainerTesterClass2:
 		print(f"测试用时: {time2 - time1}")
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 	
-	def kFold_train_test(self):
+	def kFold_train_test(self,k=BTNHGV2ParameterClass.kFold_k
+					  ,batch_size=BTNHGV2ParameterClass.batch_size
+					  ,shuffle=BTNHGV2ParameterClass.shuffle
+					  ,reset_seed=BTNHGV2ParameterClass.resetSeed
+					  ):
+		
+		dataSet=self._model.addressTimeDataCls.addressTimeFeature_dataSet
+		if dataSet is None:
+			print("addressTimeFeature_dataSet is None")
+			return None
 		print("start kFold_train_test")
-		time1 = time.time()
-		dataLoaders=self._model.addressTimeDataCls.kFold_dataloaders
-		k=1
-		for train_dataloader, test_dataloader in dataLoaders:
-			print(f"{k} Fold, total {self._model.kFold_k} fold")
-			self._model.train_dataLoader=train_dataloader
-			self._model.test_dataLoader=test_dataloader
-			self.train()
-			self.test()
-			k+=1
+		time1 = time.time()	
+		randSeed=BTNHGV2ParameterClass.rand(reset_seed)
+
+		features, labels = dataSet.tensors
+
+		KFold_indices=self._model.addressTimeDataCls.get_address_time_feature_KFold_indices(k=k)
+
+		for fold_idx, (train_idx, val_idx) in enumerate(KFold_indices):
+			# 显示第k折
+			print(f"Processing fold {fold_idx + 1}/{k}")
+			
+			# 创建训练和验证子集
+			train_dataset = TensorDataset(features[train_idx], labels[train_idx])
+			test_dataset = TensorDataset(features[val_idx], labels[val_idx])
+			
+			# 创建DataLoader
+			trainLoader = DataLoader(train_dataset
+								, batch_size=batch_size
+								, shuffle=shuffle
+								, random_seed=randSeed)
+			
+			testLoader = DataLoader(test_dataset
+								, batch_size=batch_size
+								, shuffle=False
+								, random_seed=randSeed)
+
+			self.train_test(trainLoader, testLoader)
+
 			result=resultAnalysisClass(self._model)
 			self._model.kFold_evaluations.append(result.model.evaluationMetrics)
 

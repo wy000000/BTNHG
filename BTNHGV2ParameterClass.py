@@ -65,6 +65,7 @@ class BTNHGV2ParameterClass():
 	cnn_kernel_size=3
 	pool_width=1
 	pool_height=2
+	cnn_batch_size=512
 
 	epochsDisplay_atf=4
 

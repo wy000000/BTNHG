@@ -26,21 +26,21 @@ class simple2DCNNClass(ExtendedNNModule):
 		
 		super().__init__()
 		self.addressTimeDataCls = addressTimeDataCls
-		self.dataSet = self.addressTimeDataCls.dataSet
+		# self.dataSet = self.addressTimeDataCls.dataSet
 		# self.train_dataLoader = self.addressTimeDataCls.train_dataLoader
 		# self.test_dataLoader = self.addressTimeDataCls.test_dataLoader
 		# self.kfoldLoader = self.addressTimeDataCls.kFold_dataloaders
-		self.feature_dim = self.dataSet.tensors[0].shape[-1]
-		self.seq_len = self.dataSet.tensors[0].shape[-2]
+		self.feature_dim = self.addressTimeDataCls.addressTimeFeature_dataSet.tensors[0].shape[-1]
+		self.seq_len = self.addressTimeDataCls.addressTimeFeature_dataSet.tensors[0].shape[-2]
+		self.num_classes = self.addressTimeDataCls.addressTimeFeature_dataSet.tensors[1].unique().numel()
+
 		self.cnn_in_channels = cnn_in_channels
 		self.cnn_hidden_channels = cnn_hidden_channels
 		self.cnn_out_channels = cnn_out_channels
 		self.pool_width = pool_width
 		self.pool_height = pool_height
-		self.cnn_kernel_size = cnn_kernel_size
-		self.num_classes = self.dataSet.tensors[1].unique().numel()
+		self.cnn_kernel_size = cnn_kernel_size		
 		self.dropout_rate = dropout_rate
-
 		
 		# 卷积层1: 提取局部特征
 		self.conv1 = nn.Conv2d(
