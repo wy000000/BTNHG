@@ -1,6 +1,10 @@
 # BTNHG
 Bitcoin Transaction Network Heterogeneous Graph
 
+version="2026.1.7.1"
+
+fix epoch_loss_list bugs.
+
 version="2025.12.18.1"
 
 kFold cross-validation is added.
