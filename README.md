@@ -1,9 +1,9 @@
 # BTNHG
 Bitcoin Transaction Network Heterogeneous Graph
 
-version="2026.1.7.1"
+version="2026.1.7.2"
 
-fix epoch_loss_list bugs.
+fix some bugs.
 
 version="2025.12.18.1"
 
