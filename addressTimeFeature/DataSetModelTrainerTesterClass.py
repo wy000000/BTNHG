@@ -211,7 +211,7 @@ class DataSetModelTrainerTesterClass:
 	def kFold_train_test(self,k=BTNHGV2ParameterClass.kFold_k
 					  ,batch_size=BTNHGV2ParameterClass.batch_size
 					  ,shuffle=BTNHGV2ParameterClass.shuffle
-					  ,reset_seed=BTNHGV2ParameterClass.resetSeed
+					#   ,reset_seed=BTNHGV2ParameterClass.resetSeed
 					  ):
 		
 		dataSet=self._model.addressTimeDataCls.addressTimeFeature_dataSet
@@ -220,7 +220,7 @@ class DataSetModelTrainerTesterClass:
 			return None
 		print("start kFold_train_test")
 		time1 = time.time()	
-		randSeed=BTNHGV2ParameterClass.rand(reset_seed)
+		# randSeed=BTNHGV2ParameterClass.rand(reset_seed)
 
 		features, labels = dataSet.tensors
 
@@ -238,12 +238,12 @@ class DataSetModelTrainerTesterClass:
 			trainLoader = DataLoader(train_dataset
 								, batch_size=batch_size
 								, shuffle=shuffle
-								, random_seed=randSeed)
+								)
 			
 			testLoader = DataLoader(test_dataset
 								, batch_size=batch_size
 								, shuffle=False
-								, random_seed=randSeed)
+								)
 
 			self.train_test(trainLoader, testLoader)
 
