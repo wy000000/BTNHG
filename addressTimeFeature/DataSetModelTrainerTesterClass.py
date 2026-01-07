@@ -82,14 +82,15 @@ class DataSetModelTrainerTesterClass:
 			## 训练一个 epoch
 			loss, accuracy = self._train_one_epoch(trainLoader)
 
-			stop=earlyStopping(loss, self._model, epoch)
+			stop=earlyStopping(val_loss=loss, model=self._model, epochs=epoch)
 
 			#epoch间隔显示
 			if(epoch % epochDisplay == 0 or epoch==1):
-				epoch_loss_list.append((epoch, loss))
+				epoch_loss_list.append((epoch, loss, accuracy))
 				trainTimeStr=time.strftime('%H:%M:%S', time.gmtime(time.time() - time1))
 				print(f"{self.modelName} | Epoch {epoch:3d}"
 		  				+f" | loss: {loss:.4f}"
+						+f" | accuracy: {accuracy:.4f}"
 		  				+f" | best Loss: {earlyStopping.best_loss:.4f}"
 						+f" | patience: {earlyStopping.counter:2d}"
 						+f" | used time: {trainTimeStr}")
@@ -105,20 +106,24 @@ class DataSetModelTrainerTesterClass:
 
 		#if epoch!=epoch_loss_list的最后一个
 		if epoch!=epoch_loss_list[-1][0]:
-			epoch_loss_list.append((epoch, loss))
+			epoch_loss_list.append((epoch, loss, accuracy))
 			
 		self._model.epoch_loss_list=epoch_loss_list
-		endEpochLossStr=(f"Training completed, epoch : {epoch}, loss: {loss:.4f}")
+		endEpochLossStr=(f"Training completed, epoch : {epoch}, loss: {loss:.4f}, accuracy: {accuracy:.4f}")
 		self._model.end_epoch_loss=endEpochLossStr
 		print(f"{endEpochLossStr}, used time: {trainTimeStr}")
+
 		if earlyStopping.restore_best_weights(self._model):
 			best_epoch_loss=(f"best model in epoch {earlyStopping.best_epoch},"
-							+f" best loss: {earlyStopping.best_loss:.4f}")
+							+f" best loss: {earlyStopping.best_loss:.4f}"
+							)
 			self._model.best_epoch_loss=best_epoch_loss
 			print("restore "+best_epoch_loss)
+
 		if earlyStopping.best_loss<self._model.kFold_best_loss:
 			self._model.kFold_best_loss=earlyStopping.best_loss
 			self._model.kFold_best_model_state=copy.deepcopy(self._model.state_dict())
+
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 		
 	def _train_one_epoch(self, train_dataLoader):

@@ -64,6 +64,68 @@ class HeteroModelTrainerTesterClass:
 		# self._best_state = None
 		# self._counter = 0
 
+	################################################
+	def train(self):
+		"""完整训练与测试流程，带早停"""
+		print("start train")
+		time1 = time.time()
+		best_loss = float("inf")
+		loss=float("inf")
+		counter=0
+		epoch=0
+		epochDisplay=BTNHGV2ParameterClass.epochsDisplay_hetero
+		earlyStopping=EarlyStoppingClass()		
+		epoch_loss_list=[]
+
+		for epoch in range(1, self._epochs + 1):
+			## 训练一个 epoch
+			loss, accuracy = self._train_one_epoch()
+
+			stop=earlyStopping(val_loss=loss, model=self._model, epochs=epoch)
+
+			#epoch间隔显示
+			if(epoch % epochDisplay == 0 or epoch==1):
+				epoch_loss_list.append((epoch, loss, accuracy))
+				trainTimeStr=time.strftime('%H:%M:%S', time.gmtime(time.time() - time1))
+				print(f"{self.modelName} | Epoch {epoch:3d}"
+		  				+f" | loss: {loss:.4f}"
+		  				+f" | accuracy: {accuracy:.4f}"
+		  				+f" | best Loss: {earlyStopping.best_loss:.4f}"
+						+f" | patience: {earlyStopping.counter:2d}"
+						+f" | used time: {trainTimeStr}")
+				
+			# 早停逻辑：监控测试集损失
+			if stop:
+				print(f"early stopping at epoch {epoch}.")
+				break
+
+		time2 = time.time()
+		trainTimeStr=time.strftime('%H:%M:%S', time.gmtime(time2 - time1))
+		self._model.training_time=trainTimeStr
+
+		#if epoch!=epoch_loss_list的最后一个
+		if epoch!=epoch_loss_list[-1][0]:
+			epoch_loss_list.append((epoch, loss, accuracy))
+
+		self._model.epoch_loss_list=epoch_loss_list
+
+		endEpochLossStr=(f"Training completed, epoch : {epoch}, loss: {loss:.4f}, accuracy: {accuracy:.4f}")
+		self._model.end_epoch_loss=endEpochLossStr
+
+		print(f"{endEpochLossStr}, used time: {trainTimeStr}")
+		if earlyStopping.restore_best_weights(self._model):
+			best_epoch_loss=(f"best model in epoch {earlyStopping.best_epoch},"
+							+f" best loss: {earlyStopping.best_loss:.4f}"
+							)			
+			self._model.best_epoch_loss=best_epoch_loss
+			print("restore "+best_epoch_loss)
+
+		if earlyStopping.best_loss<self._model.kFold_best_loss:
+			self._model.kFold_best_loss=earlyStopping.best_loss
+			self._model.kFold_best_model_state=copy.deepcopy(self._model.state_dict())
+
+		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
+
 	def _train_one_epoch(self):
 		"""
 		使用self._model, neighborLoader, self._optimizer, self._device训练一个 epoch
@@ -84,6 +146,8 @@ class HeteroModelTrainerTesterClass:
 		self._model.train()
 		total_loss = 0
 		total_batches = 0
+		total_correct = 0
+		total_samples = 0
 
 		# 遍历 neighborLoader 提供的批次
 		for batch in nbLoader:
@@ -99,83 +163,32 @@ class HeteroModelTrainerTesterClass:
 
 			pred = outAddress[train_mask]
 			target = batch['address'].y[train_mask].to(torch.long)
-			#print pred, target
-			# print(f"pred: {pred}")
-			# print(f"target: {target}")
+
 			if(self._useTrainWeight):
 				trainWeight=self._model.heteroDataCls.class_weight.to(self._device)
 			else:
 				trainWeight=None
 			loss = F.cross_entropy(input=pred, target=target, weight=trainWeight)
 			loss.backward()
-			# for name, param in self._model.named_parameters():
-			# 	if param.grad is not None:
-			# 		print(f"{name} grad norm: {param.grad.data.norm(2).item()}")
-			# torch.nn.utils.clip_grad_norm_(self._model.parameters(),
-			# 								max_norm=BTNHGV2ParameterClass.max_norm)
+
 			self._optimizer.step()
 
 			total_loss += loss.item()
 			total_batches += 1
 
+			# ====== 计算准确率 ======
+			predicted_classes = pred.argmax(dim=1) # 取最大概率对应的类别
+			correct = (predicted_classes == target).sum().item()
+			total_correct += correct
+			total_samples += target.size(0)
+
 		total_loss /= total_batches #if total_batches > 0 else 0
 
+		# 总体准确率
+		accuracy = total_correct / total_samples# if total_samples > 0 else 0.0		
+
 		# 返回平均损失
-		return total_loss
-		
-	################################################
-	def train(self):
-		"""完整训练与测试流程，带早停"""
-		print("start train")
-		time1 = time.time()
-		best_loss = float("inf")
-		loss=float("inf")
-		counter=0
-		epoch=0
-		epochDisplay=BTNHGV2ParameterClass.epochsDisplay_hetero
-		earlyStopping=EarlyStoppingClass()		
-		epoch_loss_list=[]
-
-		for epoch in range(1, self._epochs + 1):
-			## 训练一个 epoch
-			loss = self._train_one_epoch()
-
-			stop=earlyStopping(loss, self._model, epoch)
-
-			#epoch间隔显示
-			if(epoch % epochDisplay == 0 or epoch==1):
-				epoch_loss_list.append((epoch, loss))
-				trainTimeStr=time.strftime('%H:%M:%S', time.gmtime(time.time() - time1))
-				print(f"{self.modelName} | Epoch {epoch:3d}"
-		  				+f" | loss: {loss:.4f}"
-		  				+f" | best Loss: {earlyStopping.best_loss:.4f}"
-						+f" | patience: {earlyStopping.counter:2d}"
-						+f" | used time: {trainTimeStr}")
-				
-			# 早停逻辑：监控测试集损失
-			if stop:
-				print(f"early stopping at epoch {epoch}.")
-				break
-
-		time2 = time.time()
-		trainTimeStr=time.strftime('%H:%M:%S', time.gmtime(time2 - time1))
-		self._model.training_time=trainTimeStr
-		#if epoch!=epoch_loss_list的最后一个
-		if epoch!=epoch_loss_list[-1][0]:
-			epoch_loss_list.append((epoch, loss))
-		self._model.epoch_loss_list=epoch_loss_list
-		endEpochLossStr=(f"Training completed, epoch : {epoch}, loss: {loss:.4f}")
-		self._model.end_epoch_loss=endEpochLossStr
-		print(f"{endEpochLossStr}, used time: {trainTimeStr}")
-		if earlyStopping.restore_best_weights(self._model):
-			best_epoch_loss=(f"best model in epoch {earlyStopping.best_epoch},"
-							+f" best loss: {earlyStopping.best_loss:.4f}")
-			self._model.best_epoch_loss=best_epoch_loss
-			print("restore "+best_epoch_loss)
-		if earlyStopping.best_loss<self._model.kFold_best_loss:
-			self._model.kFold_best_loss=earlyStopping.best_loss
-			self._model.kFold_best_model_state=copy.deepcopy(self._model.state_dict())
-		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
+		return total_loss, accuracy
 
 	def test(self):
 		"""使用 neighborLoader 在测试集上测试"""
