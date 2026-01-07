@@ -333,11 +333,15 @@ class resultAnalysisClass:
 	def _saveBTNHGV2ParameterClass(self):
 		#复制BTNHGV2ParameterClass.py 到 folderPath
 		className=BTNHGV2ParameterClass.__name__
-		srcFileName=className+".py"
+		# srcFileName=className+".py"
 		dstFileName=className+".txt"
 		filePath=os.path.join(self.methodFolderPath, dstFileName)
 
-		shutil.copyfile(srcFileName, filePath)
+		mod = sys.modules[BTNHGV2ParameterClass.__module__]
+		srcFilePath=mod.__file__
+		# print(mod.__file__)
+
+		shutil.copyfile(srcFilePath, filePath)
 		print(f"{dstFileName}已保存")
 
 		return filePath

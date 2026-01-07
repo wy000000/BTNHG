@@ -161,7 +161,7 @@ class HeteroModelTrainerTesterClass:
 		trainTimeStr=time.strftime('%H:%M:%S', time.gmtime(time2 - time1))
 		self._model.training_time=trainTimeStr
 		#if epoch!=epoch_loss_list的最后一个
-		if epoch!=epoch_loss_list[-1][0]-1:
+		if epoch!=epoch_loss_list[-1][0]:
 			epoch_loss_list.append((epoch, loss))
 		self._model.epoch_loss_list=epoch_loss_list
 		endEpochLossStr=(f"Training completed, epoch : {epoch}, loss: {loss:.4f}")

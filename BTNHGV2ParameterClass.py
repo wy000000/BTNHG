@@ -2,7 +2,7 @@ import numpy as np
 
 #定义一个参数类，保存程序中用到的各种参数
 class BTNHGV2ParameterClass():
-	version="2025.12.18.1"
+	version="2026.1.7.1"
 	########### 训练
 	###############################	
 	epochs=512
@@ -60,12 +60,12 @@ class BTNHGV2ParameterClass():
 		return int(cls._rng.integers(0, 4294967296))
 	
 	################# address Time Feature ######################
-	cnn_hidden_channels=8
-	cnn_out_channels=8
+	cnn_hidden_channels=2
+	cnn_out_channels=2
 	cnn_kernel_size=3
 	pool_width=1
 	pool_height=2
-	cnn_batch_size=128
+	cnn_batch_size=512
 
 	epochsDisplay_atf=1
 

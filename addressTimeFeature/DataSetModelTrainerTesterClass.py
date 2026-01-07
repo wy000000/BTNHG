@@ -24,10 +24,10 @@ class DataSetModelTrainerTesterClass:
 		
 		# 检查 device 是否为 None
 		if device is None:
-			self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")			
+			self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")			
 		else:
-			self._device = device
-		print(f"using device: {self._device}")
+			self.device = device
+		print(f"using device: {self.device}")
 		self._model = model
 		self.modelName=self._model.__class__.__name__
 		self._epochs = epochs
@@ -65,7 +65,7 @@ class DataSetModelTrainerTesterClass:
 		完整训练流程
 		:return: 训练历史记录
 		"""
-		print(f"开始训练模型，使用设备: {self._device}")
+		print(f"开始训练模型，使用设备: {self.device}")
 
 		time1 = time.time()
 		best_loss = float("inf")
@@ -102,9 +102,11 @@ class DataSetModelTrainerTesterClass:
 		time2 = time.time()
 		trainTimeStr=time.strftime('%H:%M:%S', time.gmtime(time2 - time1))
 		self._model.training_time=trainTimeStr
+
 		#if epoch!=epoch_loss_list的最后一个
-		if epoch!=epoch_loss_list[-1][0]-1:
+		if epoch!=epoch_loss_list[-1][0]:
 			epoch_loss_list.append((epoch, loss))
+			
 		self._model.epoch_loss_list=epoch_loss_list
 		endEpochLossStr=(f"Training completed, epoch : {epoch}, loss: {loss:.4f}")
 		self._model.end_epoch_loss=endEpochLossStr
@@ -120,7 +122,7 @@ class DataSetModelTrainerTesterClass:
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 		
 	def _train_one_epoch(self, train_dataLoader):
-		self._model = self._model.to(self._device)
+		self._model = self._model.to(self.device)
 		self._model.train()
 		running_loss = 0.0
 		correct = 0
@@ -130,7 +132,7 @@ class DataSetModelTrainerTesterClass:
 		
 		for batch_idx, (inputs, labels) in enumerate(train_dataLoader):
 			# 移动数据到设备
-			inputs, labels = inputs.to(self._device), labels.to(self._device)
+			inputs, labels = inputs.to(self.device), labels.to(self.device)
 			
 			# 梯度清零
 			self._optimizer.zero_grad()
@@ -154,8 +156,8 @@ class DataSetModelTrainerTesterClass:
 			correct += predicted.eq(labels).sum().item()
 			
 			# 打印训练进度			
-			if batch_idx % 1 == 0:
-				print(f'Batch {batch_idx}/{len(train_dataLoader)}, Loss: {loss.item():.4f}')
+			# if batch_idx % 1 == 0:
+			# 	print(f'Batch {batch_idx}/{len(train_dataLoader)}, Loss: {loss.item():.4f}')
 		
 		# 计算平均损失和准确率
 		avg_loss = running_loss / len(train_dataLoader)
@@ -166,7 +168,7 @@ class DataSetModelTrainerTesterClass:
 	def _test(self, test_dataLoader):
 		print("start test")
 		time1 = time.time()
-		self._model = self._model.to(self._device)
+		self._model = self._model.to(self.device)
 		self._model.eval()		
 
 		all_y_true = []
