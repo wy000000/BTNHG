@@ -355,12 +355,14 @@ class resultAnalysisClass:
 	
 	def _createMethodFolder(self, kfold:bool=False):
 		modelName=self.modelName
-		accuracy=self.accuracy
+		accuracy=0
 		#folderName=modelName+年月日时分秒+accuracy,以"-"分隔
 		if kfold:
+			accuracy=self.accuracy
 			self.methodFolderName=modelName+"-kFold-"+datetime.datetime.now().strftime("%Y.%m.%d %H.%M.%S")\
 					+"-"+f"acc {accuracy:.4f}"
 		else:
+			accuracy=self.kFold_accuracy_mean
 			self.methodFolderName=modelName+"-"+datetime.datetime.now().strftime("%Y.%m.%d %H.%M.%S")\
 					+"-"+f"acc {accuracy:.4f}"
 		#将path与folderName拼接
