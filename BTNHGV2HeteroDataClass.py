@@ -346,7 +346,7 @@ class BTNHGV2HeteroDataClass():
 
 			masks.append((train_mask, test_mask))
 		self.heteroData['address'].kFold_masks = masks
-		print(f"kFold划分完成")
+		print(f"kFold={kFold_k} 划分完成")
 		return masks
 
 	def _countCluster(self):

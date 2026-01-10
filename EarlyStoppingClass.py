@@ -1,4 +1,6 @@
 from BTNHGV2ParameterClass import BTNHGV2ParameterClass
+from resultAnalysisClass import resultAnalysisClass
+from ExtendedNNModule import ExtendedNNModule
 import copy
 
 class EarlyStoppingClass:
@@ -31,7 +33,7 @@ class EarlyStoppingClass:
 				self.early_stop = True
 		return self.early_stop
 
-	def restore_best_weights(self, model):
+	def restore_best_weights(self, model:ExtendedNNModule):
 		if self.best_model_state is not None:
 			model.load_state_dict(self.best_model_state)
 			return True
