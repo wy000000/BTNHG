@@ -11,6 +11,7 @@ from torch.utils.data import TensorDataset, DataLoader
 from EarlyStoppingClass import EarlyStoppingClass
 from BTNHGV2ParameterClass import BTNHGV2ParameterClass
 from resultAnalysisClass import resultAnalysisClass
+from addressTimeDataClass import addressTimeDataClass
 
 class DataSetModelTrainerTesterClass:
 	def __init__(self, model,
@@ -208,13 +209,13 @@ class DataSetModelTrainerTesterClass:
 		print(f"测试用时: {time2 - time1}")
 		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 	
-	def kFold_train_test(self,k=BTNHGV2ParameterClass.kFold_k
+	def kFold_train_test(self, addressTimeDataCls:addressTimeDataClass
+					  ,k=BTNHGV2ParameterClass.kFold_k
 					  ,batch_size=BTNHGV2ParameterClass.batch_size
-					  ,shuffle=BTNHGV2ParameterClass.shuffle
-					#   ,reset_seed=BTNHGV2ParameterClass.resetSeed
+					  ,shuffle=BTNHGV2ParameterClass.shuffle					
 					  ):
 		
-		dataSet=self._model.addressTimeDataCls.addressTimeFeature_dataSet
+		dataSet=addressTimeDataCls.addressTimeFeature_dataSet
 		if dataSet is None:
 			print("addressTimeFeature_dataSet is None")
 			return None

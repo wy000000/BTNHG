@@ -2,10 +2,10 @@ import numpy as np
 
 #定义一个参数类，保存程序中用到的各种参数
 class BTNHGV2ParameterClass():
-	version="2026.1.7.2"
+	version="2016.1.11"
 	########### 训练
 	###############################	
-	epochs=512
+	epochs=8
 	###############################
 	epochsDisplay_hetero=4
 	lr=0.01
@@ -15,7 +15,7 @@ class BTNHGV2ParameterClass():
 	useTrainWeight=False
 	
 	########### 交叉验证
-	kFold:bool=False
+	# useKFold:bool=False
 	kFold_k:int=5
 
 	########### 早停
@@ -49,7 +49,7 @@ class BTNHGV2ParameterClass():
 	addressTimeFeature_dataSet_name="addressTimeFeature_dataSet.pt"
 	save=True
 	saveModelStateDict=True
-	saveFullModel=False
+	# saveFullModel=False
 	
 	########### RNG
 	_rng = np.random.default_rng(randSeed)

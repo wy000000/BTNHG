@@ -22,8 +22,10 @@ time2 = time.time()
 print("import used time: ", time2 - time1)
 print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
+# 处理数据集
 heteroDataClass=BTNHGV2HeteroDataClass()
 
+# 定义模型
 # gmodel=HANClass(heteroDataCls=heteroDataClass)
 # gmodel=HGTClass(heteroDataCls=heteroDataClass)
 # gmodel=RGCNClass(heteroDataCls=heteroDataClass)
@@ -31,18 +33,19 @@ gmodel=SAGEClass(heteroDataCls=heteroDataClass)
 # gmodel=GATClass(heteroDataCls=heteroDataClass)
 # gmodel=GraphConvClass(heteroDataCls=heteroDataClass)
 
-trainer=HeteroModelTrainerTesterClass(model=gmodel)
-trainer.train()
-trainer.test()
-resultCls=resultAnalysisClass(gmodel)
-# resultCls.showEvaluationMetrics()
-# resultCls.showExtendedAttributes()
-# resultCls.plot_true_pred_counts()
-# resultCls.plot_confusion_matrix()
-resultCls.save()
-
-############## kFold cross-validation ##############
+# 准备训练器测试器
 trainertester=HeteroModelTrainerTesterClass(model=gmodel)
-trainertester.kFold_train_test()
-resultCls=resultAnalysisClass(model=gmodel, kFold=True)
-resultCls.save_kFold()
+
+#单次训练测试
+resultAnalyCls=trainertester.train_test()
+resultAnalyCls.save()
+
+#辅助显示
+resultAnalyCls.showEvaluationMetrics()
+resultAnalyCls.showExtendedAttributes()
+resultAnalyCls.plot_true_pred_counts()
+resultAnalyCls.plot_confusion_matrix()
+
+# 交叉验证
+resultAnalyCls=trainertester.kFold_train_test()
+resultAnalyCls.save_kFold()

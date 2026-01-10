@@ -15,16 +15,22 @@ from EarlyStoppingClass import EarlyStoppingClass
 import copy
 from BTNHGV2HeteroDataClass import BTNHGV2HeteroDataClass
 from resultAnalysisClass import resultAnalysisClass
+from ExtendedNNModule import ExtendedNNModule
 
 class HeteroModelTrainerTesterClass:
-	def __init__(self, model,				
-				device=None,				
+	def __init__(self, model:ExtendedNNModule,
+				device=None,
 				lr=BTNHGV2ParameterClass.lr,
 				weight_decay=BTNHGV2ParameterClass.weight_decay,
 				epochs=BTNHGV2ParameterClass.epochs,
 				patience=BTNHGV2ParameterClass.patience,
 				useTrainWeight=BTNHGV2ParameterClass.useTrainWeight,
-				min_delta=BTNHGV2ParameterClass.min_delta):
+				min_delta=BTNHGV2ParameterClass.min_delta,
+				# 结果分析类参数
+				folderPath:str=BTNHGV2ParameterClass.dataPath,
+				resultFolderName:str=BTNHGV2ParameterClass.resultFolderName,
+				# useKFold:bool=BTNHGV2ParameterClass.useKFold,
+				kFold_k:int=BTNHGV2ParameterClass.kFold_k):
 		"""
 		通用训练器，支持早停
 		Args:
@@ -42,12 +48,18 @@ class HeteroModelTrainerTesterClass:
 		else:
 			self._device = device
 		print(f"using device: {self._device}")
+
 		self._model = model
-		self.modelName=self._model.__class__.__name__
+
+		###########训练相关参数#############
 		self._epochs = epochs
 		self._useTrainWeight=useTrainWeight	
 		self._lr = lr
 		self._weight_decay=weight_decay
+
+		############kFold相关参数#############
+		# self._useKFold=useKFold
+		self._kFold_k=kFold_k
 
 		###############设置优化器#############
 		self._optimizer = torch.optim.AdamW(self._model.parameters(),
@@ -55,7 +67,7 @@ class HeteroModelTrainerTesterClass:
 										weight_decay=self._weight_decay)
 		#####################################
 		
-		# # 早停相关变量
+		###########早停相关变量#############
 		self._min_delta=min_delta
 		self._patience = patience		
 		# self._loss_threshold = loss_threshold
@@ -63,12 +75,30 @@ class HeteroModelTrainerTesterClass:
 		# self._best_acc = 0.0
 		# self._best_state = None
 		# self._counter = 0
+	
+		###########结果分析类#############
+		self.resultAnalyCls=None
+		self._modelName=self._model.__class__.__name__
+		self._folderPath=folderPath
+		self._resultFolderName=resultFolderName
 
-	################################################
-	def train(self):
+	def train_test(self, _useKFold:bool=False)->resultAnalysisClass:
+		if not _useKFold:
+			self.resultAnalyCls=resultAnalysisClass(self._modelName,
+								folderPath=self._folderPath,
+								resultFolderName=self._resultFolderName,
+								# useKFold=False,
+								kFold_k=self._kFold_k)
+		self._train()
+		self._test()
+		self.resultAnalyCls.compute_metrics()
+		return self.resultAnalyCls
+
+	def _train(self):
 		"""完整训练与测试流程，带早停"""
-		print("start train")
+		print("Training starts")
 		time1 = time.time()
+		resultAnalyCls=self.resultAnalyCls
 		best_loss = float("inf")
 		loss=float("inf")
 		counter=0
@@ -87,7 +117,7 @@ class HeteroModelTrainerTesterClass:
 			if(epoch % epochDisplay == 0 or epoch==1):
 				epoch_loss_list.append((epoch, loss, accuracy))
 				trainTimeStr=time.strftime('%H:%M:%S', time.gmtime(time.time() - time1))
-				print(f"{self.modelName} | Epoch {epoch:3d}"
+				print(f"{self._modelName} | Epoch {epoch:3d}"
 		  				+f" | loss: {loss:.4f}"
 		  				+f" | accuracy: {accuracy:.4f}"
 		  				+f" | best Loss: {earlyStopping.best_loss:.4f}"
@@ -101,30 +131,34 @@ class HeteroModelTrainerTesterClass:
 
 		time2 = time.time()
 		trainTimeStr=time.strftime('%H:%M:%S', time.gmtime(time2 - time1))
-		self._model.training_time=trainTimeStr
+		self.resultAnalyCls.training_time=trainTimeStr
 
 		#if epoch!=epoch_loss_list的最后一个
 		if epoch!=epoch_loss_list[-1][0]:
 			epoch_loss_list.append((epoch, loss, accuracy))
 
-		self._model.epoch_loss_list=epoch_loss_list
+		self.resultAnalyCls.epoch_loss_list=epoch_loss_list
 
 		endEpochLossStr=(f"Training completed, epoch : {epoch}, loss: {loss:.4f}, accuracy: {accuracy:.4f}")
-		self._model.end_epoch_loss=endEpochLossStr
+		self.resultAnalyCls.end_epoch_loss=endEpochLossStr
 
 		print(f"{endEpochLossStr}, used time: {trainTimeStr}")
 		if earlyStopping.restore_best_weights(self._model):
 			best_epoch_loss=(f"best model in epoch {earlyStopping.best_epoch},"
 							+f" best loss: {earlyStopping.best_loss:.4f}"
-							)			
-			self._model.best_epoch_loss=best_epoch_loss
+							)
+			self.resultAnalyCls.best_epoch_loss=best_epoch_loss
+			#best_model_state已载入，可直接保存
+			self.resultAnalyCls.best_model_state=copy.deepcopy(self._model.state_dict())
 			print("restore "+best_epoch_loss)
 
-		if earlyStopping.best_loss<self._model.kFold_best_loss:
-			self._model.kFold_best_loss=earlyStopping.best_loss
-			self._model.kFold_best_model_state=copy.deepcopy(self._model.state_dict())
-
-		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
+			if earlyStopping.best_loss<resultAnalyCls.kFold_best_loss:				
+				resultAnalyCls.kFold_best_loss=earlyStopping.best_loss
+				resultAnalyCls.kFold_best_model_state=copy.deepcopy(self._model.state_dict())
+		else:
+			raise ValueError("Early stopping did not restore best weights.")		
+		print("Training completes")
+		# print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
 	def _train_one_epoch(self):
 		"""
@@ -190,9 +224,9 @@ class HeteroModelTrainerTesterClass:
 		# 返回平均损失
 		return total_loss, accuracy
 
-	def test(self):
+	def _test(self):
 		"""使用 neighborLoader 在测试集上测试"""
-		print("start test")
+		print("Testing starts")
 		time1 = time.time()
 		self._model = self._model.to(self._device)
 		self._model.eval()		
@@ -233,31 +267,44 @@ class HeteroModelTrainerTesterClass:
 				all_preds.append(pred.cpu())
 
 		# 一次性拼接
-		self._model.all_y_true = torch.cat(all_y_true, dim=0)
-		self._model.all_probs = torch.cat(all_probs, dim=0)
-		self._model.all_preds = torch.cat(all_preds, dim=0)		
+		self.resultAnalyCls.all_y_true = torch.cat(all_y_true, dim=0)
+		self.resultAnalyCls.all_probs = torch.cat(all_probs, dim=0)
+		self.resultAnalyCls.all_preds = torch.cat(all_preds, dim=0)		
 
 		time2 = time.time()
-		print(f"测试用时: {time2 - time1}")
-		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
+		print(f"Testing completes, 测试用时: {time2 - time1}")
+		# print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
-	def kFold_train_test(self):
+	def kFold_train_test(self, **kwargs)->resultAnalysisClass:
 		print("start kFold_train_test")
-		time1 = time.time()
-		heteroData:BTNHGV2HeteroDataClass=self._model.heteroData
+		time1 = time.time()		
+		self.resultAnalyCls=resultAnalysisClass(self._modelName,
+					folderPath=self._folderPath,
+					resultFolderName=self._resultFolderName,
+					kFold_k=self._kFold_k)
+					# _useKFold=True)
+
+		heteroDataCls=self._model.heteroDataCls
+		heteroData=heteroDataCls.heteroData
+
 		k=1
-		for train_mask, tesk_mask in heteroData['address'].kFold_masks:
-			print(f"{k} Fold, total {self._model.kFold_k} fold")
+		# 进行 k 折交叉验证
+		for train_mask, tesk_mask in heteroData['address'].kFold_masks:			
+			print(f"{k} Fold, total {self._kFold_k} fold")			
 			heteroData['address'].train_mask=train_mask
 			heteroData['address'].test_mask=tesk_mask
-			self.train()
-			self.test()
+			# 初始化模型
+			self._model=self._model.__class__(heteroDataCls=heteroDataCls, **kwargs)
+			self.train_test(_useKFold=True)
+			self.resultAnalyCls.kFold_evaluations.append(self.resultAnalyCls.evaluationMetrics)
+			print(f"fold {k}/{self._kFold_k} is completed.")
 			k+=1
-			result=resultAnalysisClass(self._model)
-			self._model.kFold_evaluations.append(result.model.evaluationMetrics)
+		self.resultAnalyCls.compute_kFold_ave_metrics()
 
 		time2 = time.time()
 		kFoldTimeStr=time.strftime('%H:%M:%S', time.gmtime(time2 - time1))
-		self._model.kFold_training_time=kFoldTimeStr
+		self.resultAnalyCls.kFold_training_time=kFoldTimeStr
 		print(f"kFold_train_test用时: {time2 - time1}")
-		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
+		# print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
+
+		return self.resultAnalyCls

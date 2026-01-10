@@ -10,6 +10,7 @@ import torch.nn as nn
 import matplotlib.pyplot as plt
 import platform
 import psutil
+import json
 import sys
 import cpuinfo
 import torch.nn.functional as F
@@ -33,48 +34,88 @@ from sklearn.metrics import (
 
 class resultAnalysisClass:
 	def __init__(self,
-			  	model:ExtendedNNModule=None,
+				# model:ExtendedNNModule,
+				modelName:str,
 				folderPath:str=BTNHGV2ParameterClass.dataPath,
 				resultFolderName:str=BTNHGV2ParameterClass.resultFolderName,
-				kFold:bool=BTNHGV2ParameterClass.kFold):
+				# kFold:bool=BTNHGV2ParameterClass.kFold,
+				kFold_k:int=BTNHGV2ParameterClass.kFold_k):
 		#path
 		self.resultFolderName=resultFolderName
 		self.resultFolderPath=os.path.join(folderPath, self.resultFolderName)
 		self.methodFolderName=None
 		self.methodFolderPath=None
-		self.model=model
-		self.modelName=self.model.__class__.__name__
-		self.model.modelName=self.modelName
-		self.kFold=kFold
-		#评估参数
+		self.modelName=modelName
+
+		# self.model=model
+		############################
 		self.accuracy=0.0
-		if not self.kFold:
-			self.model.evaluationMetrics=self.compute_metrics()
-		if self.kFold:
-			self.model.evaluationMetrics=self.compute_kFold_metrics()
+		self.training_time=None
+		self.end_epoch_loss=None
+		self.best_epoch_loss=None
+		self.evaluationMetrics=None
+		self.epoch_loss_list=None
+		all_y_true=None
+		all_probs=None
+		all_preds=None
+		self.evaluationMetrics=None
+
+		#########################
+		self.best_model_state=None
+		self.best_kFold_model_state=None
+
+		##########################
+		# self.kFold=kFold
+		self.kFold_k:int=kFold_k
+		self.kFold_training_time=None
+		self.kFold_accuracy_mean=None
+		self.kFold_evaluations=[]
+		self.kFold_best_loss=float('inf')
+		self.kFold_best_model_state=None
+
+		self.kFold_evaluations_mean=None
+
+		# if not self.kFold:
+		# 	self.model.evaluationMetrics=self.compute_metrics()
+		# if self.kFold:			
+		# 	self.model.evaluationMetrics=self.compute_kFold_metrics()
+
 		#配置信息
-		if self.model.env_info is None:
-			self.model.env_info=self.get_training_env_info()
+		self.env_info=self.get_training_env_info()
+		#################################
+
+	# 	self.modelName=self.model.__class__.__name__
+	# # 	if(self.checkNotReuse()):
+	# 		self.modelName=modelName
+
+	# def checkNotReuse(self, model)->bool:
+	# 	modelName=self.model.__class__.__name__
+	# 	if(self.modelName is not None and self.modelName!=modelName):
+	# 		raise ValueError(f"This resultAnalysisClass is being used by {self.modelName}, \
+	# 				it cannot be used by {modelName} now.")
+	# 		# return False
+	# 	else:
+	# 		return True
 
 	def showEvaluationMetrics(self):
-		metrics=self.model.evaluationMetrics
+		metrics=self.evaluationMetrics
 		if(metrics is None):
-			self.model.evaluationMetrics=self._compute_metrics()
-			metrics=self.model.evaluationMetrics
+			self.evaluationMetrics=self.compute_metrics()
+			metrics=self.evaluationMetrics
 		if(metrics is None):
 			print("Evaluation metrics are None.")
 			return None
 		#按行打印metrics
 		for key, value in metrics.items():
 			print(f"{key}: {value}")
-		return	
+		return
 
 	def compute_metrics(self):
 
 		# 从模型中获取真实标签、预测标签和概率
-		y_true = self.model.all_y_true
-		y_preds = self.model.all_preds
-		y_probs = self.model.all_probs
+		y_true = self.all_y_true
+		y_preds = self.all_preds
+		y_probs = self.all_probs
 
 		if(y_true is None or y_preds is None or y_probs is None):
 			return None
@@ -87,7 +128,6 @@ class resultAnalysisClass:
 		# 基础指标
 		acc = accuracy_score(y_true, y_preds)
 		self.accuracy=acc
-		self.model.accuracy=acc
 		bal_acc = balanced_accuracy_score(y_true, y_preds)
 
 		# Precision / Recall / F1
@@ -120,7 +160,7 @@ class resultAnalysisClass:
 
 		metrics={			
 			"accuracy": acc,
-			"training_time": self.model.training_time,
+			"training_time": self.training_time,
 			"avg_confidence": avg_conf,
 			"balanced_accuracy": bal_acc,
 			"precision_macro": prec_macro,
@@ -134,12 +174,12 @@ class resultAnalysisClass:
 			"cohen_kappa": kappa,
 			"mcc": mcc
 		}
-		# self.evaluationMetrics=metrics
+		self.evaluationMetrics=metrics
 		print("Evaluation metrics are computed.")
 		return metrics
 
-	def compute_kFold_metrics(self):
-		kFold_metrics=self.model.kFold_evaluations
+	def compute_kFold_ave_metrics(self):
+		kFold_metrics=self.kFold_evaluations
 		# 辅助函数：计算某个指标的平均值
 		def avg_metric(metric_name):
 			values = [fold.get(metric_name) for fold in kFold_metrics if fold.get(metric_name) is not None]
@@ -158,11 +198,10 @@ class resultAnalysisClass:
 		kFold_pr_auc=avg_metric("pr_auc_macro")
 		kFold_kappa=avg_metric("cohen_kappa")
 		kFold_mcc=avg_metric("mcc")
-		self.model.kFold_accuracy_mean=kFold_acc
+		self.kFold_accuracy_mean=kFold_acc
 
-		kFold_metrics={			
+		self.kFold_evaluations_mean={			
 			"kFold_accuracy": kFold_acc,
-			"kFold_training_time": self.model.kFold_training_time,
 			"kFold_avg_confidence": kFold_avg_conf,
 			"kFold_balanced_accuracy": kFold_bal_acc,
 			"kFold_precision_macro": kFold_prec_macro,
@@ -176,7 +215,7 @@ class resultAnalysisClass:
 			"kFold_cohen_kappa": kFold_kappa,
 			"kFold_mcc": kFold_mcc
 		}
-		return kFold_metrics
+		return self.kFold_evaluations_mean
 	
 	def plot_true_pred_counts(self, y_true=None, y_preds=None):
 		if(y_true is None):
@@ -275,8 +314,9 @@ class resultAnalysisClass:
 
 	def save(self,
 			save:bool=BTNHGV2ParameterClass.save,
-			saveModelStateDict:bool=BTNHGV2ParameterClass.saveModelStateDict,
-			saveFullModel:bool=BTNHGV2ParameterClass.saveFullModel):
+			saveModelStateDict:bool=BTNHGV2ParameterClass.saveModelStateDict
+			# saveFullModel:bool=BTNHGV2ParameterClass.saveFullModel
+			):
 		'''
 		Items can be saved only if save=True
 		'''
@@ -288,15 +328,16 @@ class resultAnalysisClass:
 			self._saveY_true_preds_probs()
 			
 			if(saveModelStateDict):
-				self._saveModel_state_dict()
-			if(saveFullModel):
-				self._saveFullModel()
+				self._save_model_state_dict(isKold=False)
+			# if(saveFullModel):
+			# 	self._saveFullModel()
 		return
 	
 	def save_kFold(self,
 			save:bool=BTNHGV2ParameterClass.save,
-			saveModelStateDict:bool=BTNHGV2ParameterClass.saveModelStateDict,
-			saveFullModel:bool=BTNHGV2ParameterClass.saveFullModel):
+			saveModelStateDict:bool=BTNHGV2ParameterClass.saveModelStateDict
+			# saveFullModel:bool=BTNHGV2ParameterClass.saveFullModel
+			):
 		'''
 		Items can be saved only if save=True
 		'''
@@ -306,9 +347,9 @@ class resultAnalysisClass:
 			self._save_extended_attributes_kFold()
 			self._save_evaluationMetrics_kFold()
 			if(saveModelStateDict):
-				self._save_kFold_best_model_state_dict()
-			if(saveFullModel):
-				self._save_kFold_fullModel()
+				self._save_model_state_dict(isKold=True)
+			# if(saveFullModel):
+			# 	self._save_kFold_fullModel()
 			
 		return
 	
@@ -349,7 +390,7 @@ class resultAnalysisClass:
 	def _saveExtendedAttributes(self):
 		fileName=BTNHGV2ParameterClass.extendedAttributesFileName
 		filePath=os.path.join(self.methodFolderPath, fileName)
-		str=self.model.serialize_extended_attributes()
+		str=self.serialize_trainTest_attributes()
 		
 		with open(filePath, "w") as f:
 			f.write(str)
@@ -363,8 +404,8 @@ class resultAnalysisClass:
 		filePath = os.path.join(self.methodFolderPath, fileName)
 
 		epoch_loss_list = []
-		if self.model.epoch_loss_list is not None:
-			epoch_loss_list = self.model.epoch_loss_list
+		if self.epoch_loss_list is not None:
+			epoch_loss_list = self.epoch_loss_list
 
 		# 创建 DataFrame
 		df = pd.DataFrame(epoch_loss_list, columns=['Epoch', 'Loss', 'Accuracy'])
@@ -411,9 +452,9 @@ class resultAnalysisClass:
 			+ BTNHGV2ParameterClass.y_true_preds_probsFileName
 		filePath = os.path.join(self.methodFolderPath, fileName)
 
-		y_true = self.model.all_y_true
-		y_preds = self.model.all_preds
-		y_probs = self.model.all_probs
+		y_true = self.all_y_true
+		y_preds = self.all_preds
+		y_probs = self.all_probs
 
 		# print(f"y_true.shape={getattr(y_true, 'shape', None)}")
 		# print(f"y_preds.shape={getattr(y_preds, 'shape', None)}")
@@ -434,49 +475,53 @@ class resultAnalysisClass:
 		print(f"{fileName}已保存")
 		return filePath
 
-	def _saveModel_state_dict(self):
+	def _save_model_state_dict(self, isKold:bool=False):
 		fileName=BTNHGV2ParameterClass.modelStateDictFileName
 		filePath=os.path.join(self.methodFolderPath, fileName)
-
-		torch.save(self.model.state_dict(), filePath)
+		if(not isKold):
+			torch.save(self.best_model_state, filePath)
+		else:
+			torch.save(self.kFold_best_model_state, filePath)
 		print(f"{fileName}已保存")
 
 		return filePath
 	
-	def _saveFullModel(self):
-		#复制model 到 self.methodFolderPath
-		fileName=BTNHGV2ParameterClass.fullModelFileName
-		filePath=os.path.join(self.methodFolderPath, fileName)
+	#region
+	# def _saveFullModel(self):
+	# 	#复制model 到 self.methodFolderPath
+	# 	fileName=BTNHGV2ParameterClass.fullModelFileName
+	# 	filePath=os.path.join(self.methodFolderPath, fileName)
 
-		torch.save(self.model, filePath)
-		print(f"{fileName}已保存")
+	# 	torch.save(self.model, filePath)
+	# 	print(f"{fileName}已保存")
 
-		return filePath
+	# 	return filePath
 		
-	def _save_kFold_best_model_state_dict(self):
-		fileName=BTNHGV2ParameterClass.modelStateDictFileName
-		filePath=os.path.join(self.methodFolderPath, fileName)
+	# def _save_kFold_best_model_state_dict(self):
+	# 	fileName=BTNHGV2ParameterClass.modelStateDictFileName
+	# 	filePath=os.path.join(self.methodFolderPath, fileName)
 
-		torch.save(self.model.kFold_best_model_state, filePath)
-		print(f"{fileName}已保存")
+	# 	torch.save(self.kFold_best_model_state, filePath)
+	# 	print(f"{fileName}已保存")
 
-		return filePath
+	# 	return filePath
 
-	def _save_kFold_fullModel(self):
-		#复制model 到 self.methodFolderPath
-		fileName=BTNHGV2ParameterClass.fullModelFileName
-		filePath=os.path.join(self.methodFolderPath, fileName)
-		self.model.load_state_dict(self.model.kFold_best_model_state)
+	# def _save_kFold_fullModel(self):
+	# 	#复制model 到 self.methodFolderPath
+	# 	fileName=BTNHGV2ParameterClass.fullModelFileName
+	# 	filePath=os.path.join(self.methodFolderPath, fileName)
+	# 	self.model.load_state_dict(self.model.kFold_best_model_state)
 
-		torch.save(self.model, filePath)
-		print(f"{fileName}已保存")
+	# 	torch.save(self.model, filePath)
+	# 	print(f"{fileName}已保存")
 
-		return filePath
+	# 	return filePath
+	#endregion
 	
 	def _save_extended_attributes_kFold(self):
 		fileName=BTNHGV2ParameterClass.extendedAttributesFileName
 		filePath=os.path.join(self.methodFolderPath, fileName)
-		str=self.model.serialize_extended_attributes_kFold()
+		str=self.serialize_kFold_attributes()
 		
 		with open(filePath, "w") as f:
 			f.write(str)
@@ -488,7 +533,7 @@ class resultAnalysisClass:
 		fileName = f"{int(time.time() * 1000) % 1000:03d} " \
 			+ BTNHGV2ParameterClass.kFold_evaluationMetricsFileName
 		filePath = os.path.join(self.methodFolderPath, fileName)
-		kFold_evaluations = self.model.kFold_evaluations  # list[dict]
+		kFold_evaluations = self.kFold_evaluations  # list[dict]
 
 		# 创建工作簿和工作表
 		wb = xlsxwriter.Workbook(filePath)
@@ -546,4 +591,40 @@ class resultAnalysisClass:
 		print(f"{fileName} 已保存")
 		return filePath
 
+	def serialize_trainTest_attributes(self):
+		attrs = {
+			"modelName": self.modelName,
+			"training_time": self.training_time,
+			"accuracy": self.accuracy,
+			"end_epoch_loss": self.end_epoch_loss,
+			"best_epoch_loss": self.best_epoch_loss,
+			"evaluationMetrics": self.evaluationMetrics,
+			"env_info": self.env_info
+		}
+		jsonStr=json.dumps(attrs, default=self._to_serializable, ensure_ascii=False, indent=4)
+		# 返回 JSON 字符串
+		return jsonStr
 	
+	def _to_serializable(self, val):
+		# 处理 numpy 和 torch 类型
+		if isinstance(val, (np.generic,)):
+			return val.item()
+		if isinstance(val, torch.Tensor):
+			return val.tolist()
+		if hasattr(val, "item"):  # torch scalar
+			return val.item()
+		return str(val)  # 兜底转换为字符串
+	
+	def serialize_kFold_attributes(self):
+		attrs = {
+			"modelName": self.modelName,
+			"kFold_k": self.kFold_k,
+			"kFold_training_time": self.kFold_training_time,
+			"kFold_accuracy_mean": self.kFold_accuracy_mean,
+			"kFold_best_loss": self.kFold_best_loss,
+			"kFold_evaluations_mean": self.kFold_evaluations_mean,
+			"env_info": self.env_info
+		}		
+		jsonStr=json.dumps(attrs, default=self._to_serializable, ensure_ascii=False, indent=4)
+		# 返回 JSON 字符串
+		return jsonStr
