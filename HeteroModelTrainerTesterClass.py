@@ -29,7 +29,6 @@ class HeteroModelTrainerTesterClass:
 				# 结果分析类参数
 				folderPath:str=BTNHGV2ParameterClass.dataPath,
 				resultFolderName:str=BTNHGV2ParameterClass.resultFolderName,
-				# useKFold:bool=BTNHGV2ParameterClass.useKFold,
 				kFold_k:int=BTNHGV2ParameterClass.kFold_k):
 		"""
 		通用训练器，支持早停

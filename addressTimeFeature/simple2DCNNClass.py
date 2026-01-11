@@ -1,3 +1,4 @@
+# import set_parent_dir
 from BTNHGV2ParameterClass import BTNHGV2ParameterClass
 from addressTimeDataClass import addressTimeDataClass
 import torch
@@ -54,7 +55,7 @@ class simple2DCNNClass(ExtendedNNModule):
 		self.bn1 = nn.BatchNorm2d(self.cnn_hidden_channels)
 		
 		# 池化层1: 降低空间维度
-		self.pool1 = nn.MaxPool2d(kernel_size=(self.pool_height, self.pool_width))  # 沿着区块维度下采样
+		self.pool1 = nn.AvgPool2d(kernel_size=(self.pool_height, self.pool_width))  # 沿着区块维度下采样
 		
 		# 卷积层2: 提取更高级别的特征
 		self.conv2 = nn.Conv2d(
@@ -68,7 +69,7 @@ class simple2DCNNClass(ExtendedNNModule):
 		self.bn2 = nn.BatchNorm2d(self.cnn_out_channels)
 		
 		# 池化层2
-		self.pool2 = nn.MaxPool2d(kernel_size=(self.pool_height, self.pool_width))
+		self.pool2 = nn.AvgPool2d(kernel_size=(self.pool_height, self.pool_width))
 		
 		# Dropout层
 		self.dropout = nn.Dropout(self.dropout_rate)
