@@ -5,7 +5,7 @@ class BTNHGV2ParameterClass():
 	version="2016.1.11"
 	########### 训练
 	###############################	
-	epochs=8
+	epochs=512
 	###############################
 	epochsDisplay_hetero=4
 	lr=0.01
@@ -65,7 +65,7 @@ class BTNHGV2ParameterClass():
 	cnn_kernel_size=3
 	pool_width=1
 	pool_height=2
-	cnn_batch_size=512
+	cnn_batch_size=256
 
 	epochsDisplay_atf=1
 

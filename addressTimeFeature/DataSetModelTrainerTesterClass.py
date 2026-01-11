@@ -1,3 +1,4 @@
+# import set_parent_dir
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -12,16 +13,21 @@ from EarlyStoppingClass import EarlyStoppingClass
 from BTNHGV2ParameterClass import BTNHGV2ParameterClass
 from resultAnalysisClass import resultAnalysisClass
 from addressTimeDataClass import addressTimeDataClass
+from ExtendedNNModule import ExtendedNNModule
 
 class DataSetModelTrainerTesterClass:
-	def __init__(self, model,
+	def __init__(self, model:ExtendedNNModule,
 				device=None,				
 				lr=BTNHGV2ParameterClass.lr,
 				weight_decay=BTNHGV2ParameterClass.weight_decay,
 				epochs=BTNHGV2ParameterClass.epochs,
 				patience=BTNHGV2ParameterClass.patience,
 				useTrainWeight=BTNHGV2ParameterClass.useTrainWeight,
-				min_delta=BTNHGV2ParameterClass.min_delta):
+				min_delta=BTNHGV2ParameterClass.min_delta,
+				# 结果分析类参数
+				folderPath:str=BTNHGV2ParameterClass.dataPath,
+				resultFolderName:str=BTNHGV2ParameterClass.resultFolderName,
+				kFold_k:int=BTNHGV2ParameterClass.kFold_k):
 		
 		# 检查 device 是否为 None
 		if device is None:
@@ -30,7 +36,6 @@ class DataSetModelTrainerTesterClass:
 			self.device = device
 		print(f"using device: {self.device}")
 		self._model = model
-		self.modelName=self._model.__class__.__name__
 		self._epochs = epochs
 		self._useTrainWeight=useTrainWeight	
 		self._lr = lr
@@ -47,11 +52,17 @@ class DataSetModelTrainerTesterClass:
 		self._min_delta=min_delta
 		self._patience = patience
 
+		###########结果分析类#############
+		self.resultAnalyCls=None
+		self._modelName=self._model.__class__.__name__
+		self._folderPath=folderPath
+		self._resultFolderName=resultFolderName
+
 	def train_test(self, trainLoader=None, testLoader=None):
 		if (trainLoader is None and testLoader is not None)\
 			or (trainLoader is not None and testLoader is None):
-			print("trainLoader and testLoader must be provided together.")
-			return
+			raise ValueError("trainLoader and testLoader must be provided together.")
+			
 		
 		if trainLoader is None and testLoader is None:
 			trainLoader, testLoader \
