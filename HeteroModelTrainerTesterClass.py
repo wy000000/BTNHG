@@ -99,9 +99,9 @@ class HeteroModelTrainerTesterClass:
 		print("Training starts")
 		time1 = time.time()
 		resultAnalyCls=self.resultAnalyCls
-		best_loss = float("inf")
+		# best_loss = float("inf")
 		loss=float("inf")
-		counter=0
+		# counter=0
 		epoch=0
 		epochDisplay=BTNHGV2ParameterClass.epochsDisplay_hetero
 		earlyStopping=EarlyStoppingClass()		
