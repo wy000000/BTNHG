@@ -9,16 +9,16 @@ from ExtendedNNModule import ExtendedNNModule
 
 class HGTClass(ExtendedNNModule):
 	def __init__(self,
-				heteroDataCls: BTNHGV2HeteroDataClass,
-				hidden_channels=BTNHGV2ParameterClass.hidden_channels,
-				out_channels=BTNHGV2ParameterClass.out_channels,
-				num_heads=BTNHGV2ParameterClass.num_heads,
-				num_layers=BTNHGV2ParameterClass.num_layers,
-				dropout=BTNHGV2ParameterClass.dropout,
-				useProj=BTNHGV2ParameterClass.HGT_useProj):
+					heteroData: HeteroData,
+					hidden_channels=BTNHGV2ParameterClass.hidden_channels,
+					out_channels=BTNHGV2ParameterClass.out_channels,
+					num_heads=BTNHGV2ParameterClass.num_heads,
+					num_layers=BTNHGV2ParameterClass.num_layers,
+					dropout=BTNHGV2ParameterClass.dropout,
+					useProj=BTNHGV2ParameterClass.HGT_useProj):
 		super().__init__()
-		self.heteroDataCls = heteroDataCls
-		self.heteroData = heteroDataCls.heteroData
+		# self.heteroDataCls = heteroDataCls
+		self.heteroData = heteroData
 		self._metadata = self.heteroData.metadata()		
 		self._out_channels = out_channels
 		self._node_types, self._edge_types = self._metadata

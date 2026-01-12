@@ -23,15 +23,15 @@ print("import used time: ", time2 - time1)
 print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
 # 处理数据集
-heteroDataClass=BTNHGV2HeteroDataClass()
+heteroDataCls=BTNHGV2HeteroDataClass()
 
 # 定义模型
-# gmodel=HANClass(heteroDataCls=heteroDataClass)
-# gmodel=HGTClass(heteroDataCls=heteroDataClass)
-# gmodel=RGCNClass(heteroDataCls=heteroDataClass)
-gmodel=SAGEClass(heteroDataCls=heteroDataClass)
-# gmodel=GATClass(heteroDataCls=heteroDataClass)
-# gmodel=GraphConvClass(heteroDataCls=heteroDataClass)
+# gmodel=HANClass(heteroData=heteroDataCls.heteroData)
+# gmodel=HGTClass(heteroData=heteroDataCls.heteroData)
+# gmodel=RGCNClass(heteroData=heteroDataCls.heteroData)
+gmodel=SAGEClass(heteroData=heteroDataCls.heteroData)
+# gmodel=GATClass(heteroData=heteroDataCls.heteroData)
+# gmodel=GraphConvClass(heteroData=heteroDataCls.heteroData)
 
 # 准备训练器测试器
 trainertester=HeteroModelTrainerTesterClass(model=gmodel)

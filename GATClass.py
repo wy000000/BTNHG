@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import HeteroConv, SAGEConv, GATConv, GraphConv
+from torch_geometric.data import HeteroData
 from ExtendedNNModule import ExtendedNNModule
 from BTNHGV2HeteroDataClass import BTNHGV2HeteroDataClass
 from BTNHGV2ParameterClass import BTNHGV2ParameterClass
@@ -13,7 +14,7 @@ from torch_geometric.nn import GATConv, HeteroConv
 
 class GATClass(ExtendedNNModule):
 	def __init__(self,
-				 heteroDataCls: BTNHGV2HeteroDataClass,
+				 heteroData: HeteroData,
 				 hidden_channels=BTNHGV2ParameterClass.hidden_channels,
 				 out_channels=BTNHGV2ParameterClass.out_channels,
 				 num_layers=BTNHGV2ParameterClass.num_layers,
@@ -21,8 +22,8 @@ class GATClass(ExtendedNNModule):
 				 dropout=BTNHGV2ParameterClass.dropout):
 		super().__init__()
 		self._dropout = nn.Dropout(p=dropout)
-		self.heteroDataCls = heteroDataCls
-		self.heteroData = heteroDataCls.heteroData
+		# self.heteroDataCls = heteroDataCls
+		self.heteroData = heteroData
 		self.num_heads = num_heads
 		self.hidden_channels = hidden_channels
 		self.out_channels = out_channels

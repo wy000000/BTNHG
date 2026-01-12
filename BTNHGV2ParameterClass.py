@@ -5,7 +5,7 @@ class BTNHGV2ParameterClass():
 	version="2016.1.11"
 	########### 训练
 	###############################	
-	epochs=512
+	epochs=512 #Recommended 512
 	###############################
 	epochsDisplay_hetero=4
 	lr=0.01
@@ -16,7 +16,7 @@ class BTNHGV2ParameterClass():
 	
 	########### 交叉验证
 	# useKFold:bool=False
-	kFold_k:int=5
+	kFold_k:int=5 #Recommended 5
 
 	########### 早停
 	patience=32
@@ -65,7 +65,7 @@ class BTNHGV2ParameterClass():
 	cnn_kernel_size=3
 	pool_width=1
 	pool_height=2
-	cnn_batch_size=256
+	cnn_batch_size=64
 
 	epochsDisplay_atf=1
 

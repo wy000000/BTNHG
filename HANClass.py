@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import HANConv
+from torch_geometric.data import HeteroData
 from torch_geometric.loader import NeighborLoader
 from BTNHGV2ParameterClass import BTNHGV2ParameterClass
 from BTNHGV2HeteroDataClass import BTNHGV2HeteroDataClass
@@ -10,20 +11,20 @@ from ExtendedNNModule import ExtendedNNModule
 
 class HANClass(ExtendedNNModule):
 	def __init__(self,
-			  	heteroDataCls: BTNHGV2HeteroDataClass,
-				hidden_channels=BTNHGV2ParameterClass.hidden_channels,
-				out_channels=BTNHGV2ParameterClass.out_channels,
-				num_heads=BTNHGV2ParameterClass.num_heads,
-				# batch_size=BTNHGV2ParameterClass.batch_size,
-				# shuffle=BTNHGV2ParameterClass.shuffle,
-				# resetSeed=BTNHGV2ParameterClass.resetSeed,
-				dropout=BTNHGV2ParameterClass.dropout):
+					heteroData: HeteroData,
+					hidden_channels=BTNHGV2ParameterClass.hidden_channels,
+					out_channels=BTNHGV2ParameterClass.out_channels,
+					num_heads=BTNHGV2ParameterClass.num_heads,
+					# batch_size=BTNHGV2ParameterClass.batch_size,
+					# shuffle=BTNHGV2ParameterClass.shuffle,
+					# resetSeed=BTNHGV2ParameterClass.resetSeed,
+					dropout=BTNHGV2ParameterClass.dropout):
 		super().__init__()
 		# self.batch_size = batch_size
 		# self.shuffle = shuffle
 		# self.resetSeed = resetSeed
-		self.heteroDataCls = heteroDataCls
-		self.heteroData = heteroDataCls.heteroData
+		# self.heteroDataCls = heteroDataCls
+		self.heteroData = heteroData
 		self._metadata = self.heteroData.metadata()
 		self._num_classes = self.heteroData["address"].y.unique().numel()-1
 		self._hidden_channels = hidden_channels

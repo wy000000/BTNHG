@@ -1,13 +1,13 @@
 # BTNHG
 Bitcoin Transaction Network Heterogeneous Graph
 
+version="2026.1.12.1"
+
+fix some bugs.
+
 version="2016.1.11"
 
 修复交叉验证没有重置模型的bug。
-
-version="2026.1.7.2"
-
-fix some bugs.
 
 version="2025.12.18.1"
 

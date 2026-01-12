@@ -14,14 +14,14 @@ class RGCNClass(ExtendedNNModule):
 	RGCN 异构图分类器 —— 只对 'address' 节点中 train_mask==True 的节点进行分类
 	"""
 	def __init__(self,
-				heteroDataCls: BTNHGV2HeteroDataClass,
+				heteroData: HeteroData,
 				hidden_channels=BTNHGV2ParameterClass.hidden_channels,
 				out_channels=BTNHGV2ParameterClass.out_channels,				
 				num_layers=BTNHGV2ParameterClass.num_layers,
 				dropout=BTNHGV2ParameterClass.dropout):		
 		super().__init__()
-		self.heteroDataCls = heteroDataCls
-		self.heteroData = heteroDataCls.heteroData
+		# self.heteroDataCls = heteroDataCls
+		self.heteroData = heteroData
 		self._num_layers = num_layers
 		self._node_types = list(self.heteroData.node_types)
 		self._dropout = nn.Dropout(p=dropout)

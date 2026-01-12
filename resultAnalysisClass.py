@@ -55,9 +55,9 @@ class resultAnalysisClass:
 		self.best_epoch_loss=None
 		self.evaluationMetrics=None
 		self.epoch_loss_list=None
-		all_y_true=None
-		all_probs=None
-		all_preds=None
+		self.all_y_true=None
+		self.all_probs=None
+		self.all_preds=None
 		self.evaluationMetrics=None
 
 		#########################
@@ -219,9 +219,9 @@ class resultAnalysisClass:
 	
 	def plot_true_pred_counts(self, y_true=None, y_preds=None):
 		if(y_true is None):
-			y_true=self.model.all_y_true
+			y_true=self.all_y_true
 		if(y_preds is None):
-			y_preds=self.model.all_preds
+			y_preds=self.all_preds
 		if(y_true is None or y_preds is None):
 			print("y_true or y_preds is None.")
 			return None
@@ -266,9 +266,9 @@ class resultAnalysisClass:
 	
 	def plot_confusion_matrix(self, y_true=None, y_preds=None):
 		if(y_true is None):
-			y_true=self.model.all_y_true
+			y_true=self.all_y_true
 		if(y_preds is None):
-			y_preds=self.model.all_preds
+			y_preds=self.all_preds
 		if(y_true is None or y_preds is None):
 			print("y_true or y_preds is None.")
 			return None
@@ -310,7 +310,7 @@ class resultAnalysisClass:
 		return env_info
 
 	def showExtendedAttributes(self):
-		print(self.model.serialize_extended_attributes())
+		print(self.serialize_trainTest_attributes())
 
 	def save(self,
 			save:bool=BTNHGV2ParameterClass.save,
@@ -321,7 +321,7 @@ class resultAnalysisClass:
 		Items can be saved only if save=True
 		'''
 		if save:
-			self._createMethodFolder(kfold=False)
+			self._createMethodFolder(_useKFold=False)
 			self._saveBTNHGV2ParameterClass()
 			self._saveExtendedAttributes()
 			self._save_epoch_loss_list()
@@ -342,7 +342,7 @@ class resultAnalysisClass:
 		Items can be saved only if save=True
 		'''
 		if save:
-			self._createMethodFolder(kfold=True)
+			self._createMethodFolder(_useKFold=True)
 			self._saveBTNHGV2ParameterClass()
 			self._save_extended_attributes_kFold()
 			self._save_evaluationMetrics_kFold()
@@ -353,18 +353,18 @@ class resultAnalysisClass:
 			
 		return
 	
-	def _createMethodFolder(self, kfold:bool=False):
+	def _createMethodFolder(self, _useKFold:bool=False):
 		modelName=self.modelName
-		accuracy=0
 		#folderName=modelName+年月日时分秒+accuracy,以"-"分隔
-		if kfold:
+		if not _useKFold:
 			accuracy=self.accuracy
-			self.methodFolderName=modelName+"-kFold-"+datetime.datetime.now().strftime("%Y.%m.%d %H.%M.%S")\
-					+"-"+f"acc {accuracy:.4f}"
+			self.methodFolderName=modelName+"-"+datetime.datetime.now().strftime("%Y.%m.%d %H.%M.%S")\
+				+"-"+f"acc {accuracy:.4f}"
 		else:
 			accuracy=self.kFold_accuracy_mean
-			self.methodFolderName=modelName+"-"+datetime.datetime.now().strftime("%Y.%m.%d %H.%M.%S")\
+			self.methodFolderName=modelName+"-kFold-"+datetime.datetime.now().strftime("%Y.%m.%d %H.%M.%S")\
 					+"-"+f"acc {accuracy:.4f}"
+
 		#将path与folderName拼接
 		self.methodFolderPath=os.path.join(self.resultFolderPath, self.methodFolderName)
 		print(f"methodFolderPath={self.methodFolderPath}")
