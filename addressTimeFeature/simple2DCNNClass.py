@@ -16,24 +16,27 @@ class simple2DCNNClass(ExtendedNNModule):
 	- num_blocks: 区块数量 (5621)
 	- num_features: 每个区块的特征数量 (13)
 	"""
-	def __init__(self, addressTimeDataCls:addressTimeDataClass,
-				 cnn_in_channels=1,  # 输入通道数
-				 cnn_out_channels=BTNHGV2ParameterClass.cnn_out_channels,  # 输出通道数
-				 cnn_hidden_channels=BTNHGV2ParameterClass.cnn_hidden_channels,  # 隐藏层通道数
-				 dropout_rate=BTNHGV2ParameterClass.dropout,
-				 pool_width=BTNHGV2ParameterClass.pool_width,
-				 pool_height=BTNHGV2ParameterClass.pool_height,
-				 cnn_kernel_size=BTNHGV2ParameterClass.cnn_kernel_size):  # Dropout率
+	def __init__(self,
+			  		addressTimeFeature_dataSet: TensorDataset,
+					# addressTimeDataCls:addressTimeDataClass,
+					cnn_in_channels=1,  # 输入通道数
+					cnn_out_channels=BTNHGV2ParameterClass.cnn_out_channels,  # 输出通道数
+					cnn_hidden_channels=BTNHGV2ParameterClass.cnn_hidden_channels,  # 隐藏层通道数
+					dropout_rate=BTNHGV2ParameterClass.dropout,
+					pool_width=BTNHGV2ParameterClass.pool_width,
+					pool_height=BTNHGV2ParameterClass.pool_height,
+					cnn_kernel_size=BTNHGV2ParameterClass.cnn_kernel_size):  # Dropout率
 		
 		super().__init__()
-		self.addressTimeDataCls = addressTimeDataCls
+		# self.addressTimeDataCls = addressTimeDataCls
+		self.addressTimeFeature_dataSet = addressTimeFeature_dataSet
 		# self.dataSet = self.addressTimeDataCls.dataSet
 		# self.train_dataLoader = self.addressTimeDataCls.train_dataLoader
 		# self.test_dataLoader = self.addressTimeDataCls.test_dataLoader
 		# self.kfoldLoader = self.addressTimeDataCls.kFold_dataloaders
-		self.feature_dim = self.addressTimeDataCls.addressTimeFeature_dataSet.tensors[0].shape[-1]
-		self.seq_len = self.addressTimeDataCls.addressTimeFeature_dataSet.tensors[0].shape[-2]
-		self.num_classes = self.addressTimeDataCls.addressTimeFeature_dataSet.tensors[1].unique().numel()
+		self.feature_dim = self.addressTimeFeature_dataSet.tensors[0].shape[-1]
+		self.seq_len = self.addressTimeFeature_dataSet.tensors[0].shape[-2]
+		self.num_classes = self.addressTimeFeature_dataSet.tensors[1].unique().numel()
 
 		self.cnn_in_channels = cnn_in_channels
 		self.cnn_hidden_channels = cnn_hidden_channels

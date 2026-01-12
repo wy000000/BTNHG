@@ -42,6 +42,8 @@ class DataSetModelTrainerTesterClass:
 		self._weight_decay=weight_decay
 		self.criterion = nn.CrossEntropyLoss()
 
+		self._kFold_k=kFold_k
+
 		###############设置优化器#############
 		self._optimizer = torch.optim.AdamW(self._model.parameters(),
 										lr=self._lr,
@@ -58,19 +60,30 @@ class DataSetModelTrainerTesterClass:
 		self._folderPath=folderPath
 		self._resultFolderName=resultFolderName
 
-	def train_test(self, trainLoader=None, testLoader=None):
-		if (trainLoader is None and testLoader is not None)\
-			or (trainLoader is not None and testLoader is None):
-			raise ValueError("trainLoader and testLoader must be provided together.")
+	def train_test(self
+				, trainLoader=None
+				, testLoader=None
+				, _useKFold:bool=False
+				, **kwargs)->resultAnalysisClass:
+		
+		if not _useKFold:
+
+			self.resultAnalyCls=resultAnalysisClass(self._modelName,
+					folderPath=self._folderPath,
+					resultFolderName=self._resultFolderName,
+					kFold_k=self._kFold_k)
 			
-		
-		if trainLoader is None and testLoader is None:
 			trainLoader, testLoader \
-			= self._model.addressTimeDataCls.get_address_time_feature_trainLoader_testLoaser()
-		
+				= self._model.addressTimeDataCls.get_address_time_feature_trainLoader_testLoaser(**kwargs)
+			
+		if _useKFold:
+			if trainLoader is None or testLoader is None:
+				raise ValueError("trainLoader and testLoader must be provided when _useKFold is True.")
+			
 		self._train(trainLoader)
 		self._test(testLoader)
-		return	
+		self.resultAnalyCls.compute_metrics()
+		return self.resultAnalyCls	
 
 	def _train(self, trainLoader):
 		"""
@@ -80,6 +93,7 @@ class DataSetModelTrainerTesterClass:
 		print(f"开始训练模型，使用设备: {self.device}")
 
 		time1 = time.time()
+		resultAnalyCls=self.resultAnalyCls
 		best_loss = float("inf")
 		loss=float("inf")
 		counter=0
@@ -120,23 +134,29 @@ class DataSetModelTrainerTesterClass:
 		if epoch!=epoch_loss_list[-1][0]:
 			epoch_loss_list.append((epoch, loss, accuracy))
 			
-		self._model.epoch_loss_list=epoch_loss_list
+		self.resultAnalyCls.epoch_loss_list=epoch_loss_list
+		
 		endEpochLossStr=(f"Training completed, epoch : {epoch}, loss: {loss:.4f}, accuracy: {accuracy:.4f}")
-		self._model.end_epoch_loss=endEpochLossStr
+		self.resultAnalyCls.end_epoch_loss=endEpochLossStr
+
 		print(f"{endEpochLossStr}, used time: {trainTimeStr}")
 
 		if earlyStopping.restore_best_weights(self._model):
 			best_epoch_loss=(f"best model in epoch {earlyStopping.best_epoch},"
 							+f" best loss: {earlyStopping.best_loss:.4f}"
 							)
-			self._model.best_epoch_loss=best_epoch_loss
+			
+			self.resultAnalyCls.best_epoch_loss=best_epoch_loss
+			#best_model_state已载入，可直接保存
+			self.resultAnalyCls.best_model_state=copy.deepcopy(self._model.state_dict())
 			print("restore "+best_epoch_loss)
 
-		if earlyStopping.best_loss<self._model.kFold_best_loss:
-			self._model.kFold_best_loss=earlyStopping.best_loss
-			self._model.kFold_best_model_state=copy.deepcopy(self._model.state_dict())
-
-		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
+			if earlyStopping.best_loss<resultAnalyCls.kFold_best_loss:				
+				resultAnalyCls.kFold_best_loss=earlyStopping.best_loss
+				resultAnalyCls.kFold_best_model_state=copy.deepcopy(self._model.state_dict())
+		else:
+			raise ValueError("Early stopping did not restore best weights.")		
+		print("Training completes")
 		
 	def _train_one_epoch(self, train_dataLoader):
 		self._model = self._model.to(self.device)
@@ -212,35 +232,38 @@ class DataSetModelTrainerTesterClass:
 				all_probs.append(probs.cpu())
 				all_preds.append(pred.cpu())
 		# 一次性拼接
-		self._model.all_y_true = torch.cat(all_y_true, dim=0)
-		self._model.all_probs = torch.cat(all_probs, dim=0)
-		self._model.all_preds = torch.cat(all_preds, dim=0)
+		self.resultAnalyCls.all_y_true = torch.cat(all_y_true, dim=0)
+		self.resultAnalyCls.all_probs = torch.cat(all_probs, dim=0)
+		self.resultAnalyCls.all_preds = torch.cat(all_preds, dim=0)
 
 		time2 = time.time()
 		print(f"测试用时: {time2 - time1}")
-		print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
+		# print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 	
 	def kFold_train_test(self, addressTimeDataCls:addressTimeDataClass
-					  ,k=BTNHGV2ParameterClass.kFold_k
-					  ,batch_size=BTNHGV2ParameterClass.batch_size
-					  ,shuffle=BTNHGV2ParameterClass.shuffle					
-					  ):
-		
+						,cnn_batch_size=BTNHGV2ParameterClass.cnn_batch_size
+						,shuffle=BTNHGV2ParameterClass.shuffle					
+						,**kwargs):
 		dataSet=addressTimeDataCls.addressTimeFeature_dataSet
 		if dataSet is None:
-			print("addressTimeFeature_dataSet is None")
-			return None
+			raise("addressTimeFeature_dataSet is None")		
 		print("start kFold_train_test")
-		time1 = time.time()	
-		# randSeed=BTNHGV2ParameterClass.rand(reset_seed)
 
+		time1 = time.time()
+
+		self.resultAnalyCls=resultAnalysisClass(self._modelName,
+			folderPath=self._folderPath,
+			resultFolderName=self._resultFolderName,
+			kFold_k=self._kFold_k)
+		
+		kFold_k=self._kFold_k
 		features, labels = dataSet.tensors
 
-		KFold_indices=self._model.addressTimeDataCls.get_address_time_feature_KFold_indices(k=k)
+		KFold_indices=addressTimeDataCls.get_address_time_feature_KFold_indices(k=kFold_k)
 
 		for fold_idx, (train_idx, val_idx) in enumerate(KFold_indices):
 			# 显示第k折
-			print(f"Processing fold {fold_idx + 1}/{k}")
+			print(f"Processing fold {fold_idx + 1}/{kFold_k}")
 			
 			# 创建训练和验证子集
 			train_dataset = TensorDataset(features[train_idx], labels[train_idx])
@@ -248,19 +271,22 @@ class DataSetModelTrainerTesterClass:
 			
 			# 创建DataLoader
 			trainLoader = DataLoader(train_dataset
-								, batch_size=batch_size
+								, batch_size=cnn_batch_size
 								, shuffle=shuffle
 								)
 			
 			testLoader = DataLoader(test_dataset
-								, batch_size=batch_size
+								, batch_size=cnn_batch_size
 								, shuffle=False
 								)
+			
+			self._model = self._model.__class__(addressTimeFeature_dataSet=dataSet, **kwargs)
 
-			self.train_test(trainLoader, testLoader)
+			self.train_test(trainLoader=trainLoader, testLoader=testLoader, _useKFold=True)
 
-			result=resultAnalysisClass(self._model)
-			self._model.kFold_evaluations.append(result.model.evaluationMetrics)
+			self.resultAnalyCls.kFold_evaluations.append(self.resultAnalyCls.evaluationMetrics)
+			print(f"fold {fold_idx + 1}/{kFold_k} is completed.")
+
 
 		time2 = time.time()
 		kFoldTimeStr=time.strftime('%H:%M:%S', time.gmtime(time2 - time1))

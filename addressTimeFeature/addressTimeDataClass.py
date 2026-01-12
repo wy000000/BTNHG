@@ -313,7 +313,7 @@ class addressTimeDataClass:
 
 	def get_address_time_feature_KFold_indices(self,
 		k=BTNHGV2ParameterClass.kFold_k,
-		batch_size=BTNHGV2ParameterClass.cnn_batch_size,
+		# cnn_batch_size=BTNHGV2ParameterClass.cnn_batch_size,
 		shuffle=BTNHGV2ParameterClass.shuffle,
 		resetSeed=BTNHGV2ParameterClass.resetSeed):
 		"""
@@ -360,14 +360,14 @@ class addressTimeDataClass:
 			
 			# # 创建DataLoader
 			# train_dataLoader = DataLoader(train_dataset
-			# 					,batch_size=batch_size
+			# 					,batch_size=cnn_batch_size
 			# 					,shuffle=shuffle
 			# 					# ,num_workers=0 # 根据需要可以增加此值
 			# 					# ,pin_memory=False  # 如果有GPU可以设置为True
 			# 					)
 			
 			# test_dataLoader = DataLoader(test_dataset
-			# 					,batch_size=batch_size
+			# 					,batch_size=cnn_batch_size
 			# 					,shuffle=False
 			# 					# ,num_workers=0  # 根据需要可以增加此值
 			# 					# ,pin_memory=False  # 如果有GPU可以设置为True

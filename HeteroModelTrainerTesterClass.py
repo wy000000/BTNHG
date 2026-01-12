@@ -82,6 +82,7 @@ class HeteroModelTrainerTesterClass:
 		self._resultFolderName=resultFolderName
 
 	def train_test(self, _useKFold:bool=False)->resultAnalysisClass:
+		#测试训练集通过heteroData['address'].kFold_masks传递
 		if not _useKFold:
 			self.resultAnalyCls=resultAnalysisClass(self._modelName,
 								folderPath=self._folderPath,
@@ -146,6 +147,7 @@ class HeteroModelTrainerTesterClass:
 			best_epoch_loss=(f"best model in epoch {earlyStopping.best_epoch},"
 							+f" best loss: {earlyStopping.best_loss:.4f}"
 							)
+			
 			self.resultAnalyCls.best_epoch_loss=best_epoch_loss
 			#best_model_state已载入，可直接保存
 			self.resultAnalyCls.best_model_state=copy.deepcopy(self._model.state_dict())
@@ -283,8 +285,8 @@ class HeteroModelTrainerTesterClass:
 					kFold_k=self._kFold_k)
 					# _useKFold=True)
 
-		heteroDataCls=self._model.heteroDataCls
-		heteroData=heteroDataCls.heteroData
+		# heteroDataCls=self._model.heteroDataCls
+		heteroData=self._model.heteroData
 
 		k=1
 		# 进行 k 折交叉验证
@@ -293,7 +295,8 @@ class HeteroModelTrainerTesterClass:
 			heteroData['address'].train_mask=train_mask
 			heteroData['address'].test_mask=tesk_mask
 			# 初始化模型
-			self._model=self._model.__class__(heteroDataCls=heteroDataCls, **kwargs)
+			self._model=self._model.__class__(heteroData=heteroData, **kwargs)
+			
 			self.train_test(_useKFold=True)
 			self.resultAnalyCls.kFold_evaluations.append(self.resultAnalyCls.evaluationMetrics)
 			print(f"fold {k}/{self._kFold_k} is completed.")
