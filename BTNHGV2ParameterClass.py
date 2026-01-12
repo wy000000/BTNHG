@@ -2,11 +2,10 @@ import numpy as np
 
 #定义一个参数类，保存程序中用到的各种参数
 class BTNHGV2ParameterClass():
-	version="2016.1.11"
+	version="2026.1.13.1"
 	########### 训练
-	###############################	
 	epochs=512 #Recommended 512
-	###############################
+
 	epochsDisplay_hetero=4
 	lr=0.01
 	# max_norm=100000000.0
@@ -15,7 +14,6 @@ class BTNHGV2ParameterClass():
 	useTrainWeight=False
 	
 	########### 交叉验证
-	# useKFold:bool=False
 	kFold_k:int=5 #Recommended 5
 
 	########### 早停
@@ -59,7 +57,7 @@ class BTNHGV2ParameterClass():
 			cls._rng = np.random.default_rng(seed)
 		return int(cls._rng.integers(0, 4294967296))
 	
-	################# address Time Feature ######################
+	######## address Time Feature
 	cnn_hidden_channels=2
 	cnn_out_channels=2
 	cnn_kernel_size=3
