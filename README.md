@@ -37,44 +37,33 @@ code files：
 
 	"EarlyStoppingClass.py" implements early stopping mechanism.
 
-six files can be saved:
-
-	"BTNHGV2ParameterClass.txt"(parameters' setting),
-
-	"extendedAttributes.txt"(various analysis metrics and environment configuration),
-
-	"epoch_loss_list.xlsx"(epoch loss curve),
-
-	"y_true_preds_probs.xlsx"(model test outputs),
-
-	"model.state_dict.pt",
-
-	"fullModel.pt".
-
 sample code:
 
-	heteroDataClass=BTNHGV2HeteroDataClass()
+	# 处理数据集
+	heteroDataCls=BTNHGV2HeteroDataClass()
 
-	# gmodel=HANClass(heteroDataCls=heteroDataClass)
-	# gmodel=HGTClass(heteroDataCls=heteroDataClass)
-	# gmodel=RGCNClass(heteroDataCls=heteroDataClass)
-	gmodel=SAGEClass(heteroDataCls=heteroDataClass)
-	# gmodel=GATClass(heteroDataCls=heteroDataClass)
-	# gmodel=GraphConvClass(heteroDataCls=heteroDataClass)
+	# 定义模型
+	# gmodel=HANClass(heteroData=heteroDataCls.heteroData)
+	# gmodel=HGTClass(heteroData=heteroDataCls.heteroData)
+	# gmodel=RGCNClass(heteroData=heteroDataCls.heteroData)
+	gmodel=SAGEClass(heteroData=heteroDataCls.heteroData)
+	# gmodel=GATClass(heteroData=heteroDataCls.heteroData)
+	# gmodel=GraphConvClass(heteroData=heteroDataCls.heteroData)
 
-	trainer=ModelTrainerTesterClass(model=gmodel)
-	trainer.train()
-	trainer.test()
-	resultCls=resultAnalysisClass(gmodel)
-	# resultCls.showEvaluationMetrics()
-	# resultCls.showExtendedAttributes()
-	# resultCls.plot_true_pred_counts()
-	# resultCls.plot_confusion_matrix()
-	resultCls.save()
+	# 准备训练器测试器
+	trainertester=HeteroModelTrainerTesterClass(model=gmodel)
 
-	############## kFold cross-validation ##############
-	trainertester=ModelTrainerTesterClass(model=gmodel)
-	trainertester.kFold_train_test()
-	resultCls=resultAnalysisClass(model=gmodel, kFold=True)
-	resultCls.save_kFold()
+	#单次训练测试
+	resultAnalyCls=trainertester.train_test()
+	resultAnalyCls.save()
+
+	#辅助显示
+	resultAnalyCls.showEvaluationMetrics()
+	resultAnalyCls.showExtendedAttributes()
+	resultAnalyCls.plot_true_pred_counts()
+	resultAnalyCls.plot_confusion_matrix()
+
+	# 交叉验证
+	resultAnalyCls=trainertester.kFold_train_test()
+	resultAnalyCls.save_kFold()
 
