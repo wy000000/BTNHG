@@ -290,17 +290,27 @@ class HeteroModelTrainerTesterClass:
 
 		k=1
 		# 进行 k 折交叉验证
-		for train_mask, tesk_mask in heteroData['address'].kFold_masks:			
-			print(f"{k} Fold, total {self._kFold_k} fold")			
+		for train_mask, test_mask in heteroData['address'].kFold_masks:
+			print(f"{k} Fold, total {self._kFold_k} fold")            
 			heteroData['address'].train_mask=train_mask
-			heteroData['address'].test_mask=tesk_mask
-			# 初始化模型
+			heteroData['address'].test_mask=test_mask
+			
+			# 重置测试结果存储
+			self.resultAnalyCls.all_y_true = None
+			self.resultAnalyCls.all_probs = None
+			self.resultAnalyCls.all_preds = None
+			
+			# 初始化模型和优化器
 			self._model=self._model.__class__(heteroData=heteroData, **kwargs)
+			self._optimizer = torch.optim.AdamW(self._model.parameters(),
+											lr=self._lr,
+											weight_decay=self._weight_decay)
 			
 			self.train_test(_useKFold=True)
 			self.resultAnalyCls.kFold_evaluations.append(self.resultAnalyCls.evaluationMetrics)
 			print(f"fold {k}/{self._kFold_k} is completed.")
 			k+=1
+		
 		self.resultAnalyCls.compute_kFold_ave_metrics()
 
 		time2 = time.time()
