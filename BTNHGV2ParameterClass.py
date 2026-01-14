@@ -2,7 +2,7 @@ import numpy as np
 
 #定义一个参数类，保存程序中用到的各种参数
 class BTNHGV2ParameterClass():
-	version="2026.1.13.1"
+	version="2026.1.14.1"
 	########### 训练
 	epochs=512 #Recommended 512
 
