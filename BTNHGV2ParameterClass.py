@@ -60,12 +60,17 @@ class BTNHGV2ParameterClass():
 	######## address Time Feature
 	cnn_hidden_channels=2
 	cnn_out_channels=2
-	cnn_kernel_size=3
-	pool_width=1
+
+	cnn_kernel_height=7
+	cnn_kernel_width=3
+	
 	pool_height=2
+	pool_width=1
+
 	cnn_batch_size=64
 
 	epochsDisplay_atf=1
+
 
 
 	

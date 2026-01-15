@@ -7,6 +7,7 @@ import torch.nn.functional as F
 from ExtendedNNModule import ExtendedNNModule
 from torch.utils.data import TensorDataset, DataLoader
 
+#2d cnn 会混淆各维特征，不利于分类，而且算力消耗大，不建议使用。
 class simple2DCNNClass(ExtendedNNModule):
 	"""
 	用于地址时间特征分类的2D卷积神经网络
@@ -25,7 +26,8 @@ class simple2DCNNClass(ExtendedNNModule):
 					dropout_rate=BTNHGV2ParameterClass.dropout,
 					pool_width=BTNHGV2ParameterClass.pool_width,
 					pool_height=BTNHGV2ParameterClass.pool_height,
-					cnn_kernel_size=BTNHGV2ParameterClass.cnn_kernel_size):  # Dropout率
+					cnn_kernel_height=BTNHGV2ParameterClass.cnn_kernel_height,
+					cnn_kernel_width=BTNHGV2ParameterClass.cnn_kernel_width):
 		
 		super().__init__()
 		# self.addressTimeDataCls = addressTimeDataCls
@@ -43,14 +45,15 @@ class simple2DCNNClass(ExtendedNNModule):
 		self.cnn_out_channels = cnn_out_channels
 		self.pool_width = pool_width
 		self.pool_height = pool_height
-		self.cnn_kernel_size = cnn_kernel_size		
+		self.cnn_kernel_height = cnn_kernel_height
+		self.cnn_kernel_width = cnn_kernel_width
 		self.dropout_rate = dropout_rate
 		
 		# 卷积层1: 提取局部特征
 		self.conv1 = nn.Conv2d(
 			in_channels=self.cnn_in_channels, 
 			out_channels=self.cnn_hidden_channels,
-			kernel_size=(self.cnn_kernel_size, self.cnn_kernel_size),  # 3x3卷积核
+			kernel_size=(self.cnn_kernel_height, self.cnn_kernel_width),
 			#padding=(1, 1)  # 保持空间维度不变
 			padding='same',
 			stride=1
@@ -64,7 +67,7 @@ class simple2DCNNClass(ExtendedNNModule):
 		self.conv2 = nn.Conv2d(
 			in_channels=self.cnn_hidden_channels, 
 			out_channels=self.cnn_out_channels, 
-			kernel_size=(self.cnn_kernel_size, self.cnn_kernel_size),  # 3x3卷积核
+			kernel_size=(self.cnn_kernel_height, self.cnn_kernel_width),
 			# padding=(1, 1)  # 保持空间维度不变
 			padding='same',
 			stride=1
