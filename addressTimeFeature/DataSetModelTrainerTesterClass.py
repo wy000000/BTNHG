@@ -269,6 +269,11 @@ class DataSetModelTrainerTesterClass:
 		for fold_idx, (train_idx, val_idx) in enumerate(KFold_indices):
 			# 显示第k折
 			print(f"Processing fold {fold_idx + 1}/{kFold_k}")
+
+			# 重置测试结果存储
+			self.resultAnalyCls.all_y_true = None
+			self.resultAnalyCls.all_probs = None
+			self.resultAnalyCls.all_preds = None
 			
 			# 创建训练和验证子集
 			train_dataset = TensorDataset(features[train_idx], labels[train_idx])
@@ -286,6 +291,9 @@ class DataSetModelTrainerTesterClass:
 								)
 			
 			self._model = self._model.__class__(addressTimeFeature_dataSet=dataSet, **kwargs)
+			self._optimizer = torch.optim.AdamW(self._model.parameters(),
+											lr=self._lr,
+											weight_decay=self._weight_decay)
 
 			self.train_test(_useKFold=True)
 
