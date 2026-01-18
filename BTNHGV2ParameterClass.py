@@ -17,9 +17,9 @@ class BTNHGV2ParameterClass():
 	kFold_k:int=5 #Recommended 5
 
 	########### 早停
-	patience=32
+	patience=32 #recommended 32
 	min_delta=0.01
-	stopableEpoch=128
+	stopableEpoch=128 #recommended 128
 
 	########### 模型	
 	hidden_channels=32
@@ -64,10 +64,10 @@ class BTNHGV2ParameterClass():
 	cnn_kernel_height=7
 	cnn_kernel_width=3
 	
-	pool_height=2
+	pool_height=4
 	pool_width=1
 
-	cnn_batch_size=64
+	cnn_batch_size=2048
 
 	epochsDisplay_atf=1
 
