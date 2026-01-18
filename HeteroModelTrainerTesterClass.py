@@ -111,7 +111,7 @@ class HeteroModelTrainerTesterClass:
 			## 训练一个 epoch
 			loss, accuracy = self._train_one_epoch()
 
-			stop=earlyStopping(val_loss=loss, model=self._model, epochs=epoch)
+			stop=earlyStopping(val_loss=loss, accuracy=accuracy, model=self._model, epochs=epoch)
 
 			#epoch间隔显示
 			if(epoch % epochDisplay == 0 or epoch==1):
@@ -131,26 +131,27 @@ class HeteroModelTrainerTesterClass:
 
 		time2 = time.time()
 		trainTimeStr=time.strftime('%H:%M:%S', time.gmtime(time2 - time1))
-		self.resultAnalyCls.training_time=trainTimeStr
+		resultAnalyCls.training_time=trainTimeStr
 
 		#if epoch!=epoch_loss_list的最后一个
 		if epoch!=epoch_loss_list[-1][0]:
 			epoch_loss_list.append((epoch, loss, accuracy))
 
-		self.resultAnalyCls.epoch_loss_list=epoch_loss_list
+		resultAnalyCls.epoch_loss_list=epoch_loss_list
 
 		endEpochLossStr=(f"Training completed, epoch : {epoch}, loss: {loss:.4f}, accuracy: {accuracy:.4f}")
-		self.resultAnalyCls.end_epoch_loss=endEpochLossStr
+		resultAnalyCls.end_epoch_loss=endEpochLossStr
 
 		print(f"{endEpochLossStr}, used time: {trainTimeStr}")
 		if earlyStopping.restore_best_weights(self._model):
 			best_epoch_loss=(f"best model in epoch {earlyStopping.best_epoch},"
 							+f" best loss: {earlyStopping.best_loss:.4f}"
+							+f" best accuracy: {earlyStopping.best_accuracy:.4f}"
 							)
 			
-			self.resultAnalyCls.best_epoch_loss=best_epoch_loss
+			resultAnalyCls.best_epoch_loss=best_epoch_loss
 			#best_model_state已载入，可直接保存
-			self.resultAnalyCls.best_model_state=copy.deepcopy(self._model.state_dict())
+			resultAnalyCls.best_model_state=copy.deepcopy(self._model.state_dict())
 			print("restore "+best_epoch_loss)
 
 			if earlyStopping.best_loss<resultAnalyCls.kFold_best_loss:				

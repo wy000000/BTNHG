@@ -12,18 +12,21 @@ class EarlyStoppingClass:
 		self.min_delta = min_delta
 		self.stopableEpoch=stopableEpoch
 		self.best_loss = None
+		self.best_accuracy=None
 		self.best_epoch = 0
 		self.counter = 0
 		self.early_stop = False
 		self.best_model_state = None  # 内存保存
 
-	def __call__(self, val_loss, model, epochs):
+	def __call__(self, val_loss, accuracy, model, epochs):
 		if self.best_loss is None:
 			self.best_loss = val_loss
+			self.best_accuracy=accuracy
 			self.best_epoch=epochs
 			self.best_model_state = copy.deepcopy(model.state_dict())
 		elif val_loss < self.best_loss - self.min_delta:
 			self.best_loss = val_loss
+			self.best_accuracy=accuracy
 			self.best_epoch=epochs
 			self.best_model_state = copy.deepcopy(model.state_dict())
 			self.counter = 0
