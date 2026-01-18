@@ -61,10 +61,10 @@ class BTNHGV2ParameterClass():
 	cnn_hidden_channels=2
 	cnn_out_channels=2
 
-	cnn_kernel_height=7
+	cnn_kernel_height=3
 	cnn_kernel_width=3
 	
-	pool_height=4
+	pool_height=2
 	pool_width=1
 
 	cnn_batch_size=2048
