@@ -1,4 +1,3 @@
-# import set_parent_dir
 from BTNHGV2ParameterClass import BTNHGV2ParameterClass
 from addressTimeDataClass import addressTimeDataClass
 import torch
@@ -22,7 +21,9 @@ class simple1DCNNClass(ExtendedNNModule):
 				cnn_out_channels=BTNHGV2ParameterClass.cnn_out_channels,
 				dropout_rate=BTNHGV2ParameterClass.dropout,
 				pool_height=BTNHGV2ParameterClass.pool_height,  # 1D池化只需要一个维度
-				cnn_kernel_height=BTNHGV2ParameterClass.cnn_kernel_height):
+				cnn_kernel_height=BTNHGV2ParameterClass.cnn_kernel_height,
+				# cnn_hidden_fc_out=BTNHGV2ParameterClass.cnn_hidden_fc_out
+				):
 
 		super().__init__()
 
@@ -38,6 +39,7 @@ class simple1DCNNClass(ExtendedNNModule):
 		self.pool_height = pool_height
 		self.cnn_kernel_height = cnn_kernel_height
 		self.dropout_rate = dropout_rate
+		# self.cnn_hidden_fc_out = cnn_hidden_fc_out
 
 		# 卷积层1
 		self.conv1 = nn.Conv1d(
@@ -47,7 +49,6 @@ class simple1DCNNClass(ExtendedNNModule):
 			padding="same"
 		)
 		self.bn1 = nn.BatchNorm1d(self.cnn_hidden_channels)
-		self.pool1 = nn.AvgPool1d(kernel_size=self.pool_height)
 
 		# 卷积层2
 		self.conv2 = nn.Conv1d(
@@ -57,20 +58,15 @@ class simple1DCNNClass(ExtendedNNModule):
 			padding="same"
 		)
 		self.bn2 = nn.BatchNorm1d(self.cnn_out_channels)
-		self.pool2 = nn.AvgPool1d(kernel_size=self.pool_height)
 
 		# Dropout
 		self.dropout = nn.Dropout(self.dropout_rate)
 
-		# 计算池化后的序列长度
-		pooled_seq_len = self.seq_len // self.pool_height // self.pool_height
-
 		# Flatten 后的维度
-		flattened_size = self.cnn_out_channels * pooled_seq_len
+		flattened_size = self.cnn_hidden_channels*self.seq_len
 
 		# 全连接层
-		self.fc1 = nn.Linear(flattened_size, self.cnn_out_channels)
-		self.fc_out = nn.Linear(self.cnn_out_channels, self.num_classes)
+		self.fc_out = nn.Linear(flattened_size, self.num_classes)
 
 	def forward(self, x):
 		"""
@@ -81,19 +77,16 @@ class simple1DCNNClass(ExtendedNNModule):
 		# 转换为 1D CNN 输入格式
 		x = x.permute(0, 2, 1)  # [B, D, T]
 
-		# Conv1 -> BN -> ReLU -> Pool
-		x = self.pool1(F.relu(self.bn1(self.conv1(x))))
+		# Conv1 -> BN -> ReLU
+		x = F.relu(self.bn1(self.conv1(x)))
 
-		# Conv2 -> BN -> ReLU -> Pool
-		x = self.pool2(F.relu(self.bn2(self.conv2(x))))
+		# Conv2 -> BN -> ReLU
+		# x = F.relu(self.bn2(self.conv2(x)))
 
 		# Flatten
 		x = torch.flatten(x, 1)
 
-		# FC1 -> Dropout
-		x = self.dropout(F.relu(self.fc1(x)))
-
 		# 输出层
-		x = self.fc_out(x)
+		x = self.fc_out(self.dropout(x))
 
 		return x

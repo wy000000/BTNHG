@@ -1,4 +1,4 @@
 import set_parent_dir
-import test
+from addressTimeFeature.simple1DCNNClass import simple1DCNNClass2
 
-print(5/2)
+print("complete")

@@ -12,15 +12,16 @@ from sklearn.model_selection import train_test_split
 
 class addressTimeDataClass:
 	def __init__(self,
-		dataPath=BTNHGV2ParameterClass.dataPath):
+		dataPath=BTNHGV2ParameterClass.dataPath,
+		compress:bool=BTNHGV2ParameterClass.compress_dataSet):
+	
 		self._dataPath=dataPath
 
-		self.addressTimeFeature_dataSet=self.get_address_time_feature_dataSet()
+		self.addressTimeFeature_dataSet=self.get_address_time_feature_dataSet(compress=compress)
+
 		# self.feature_dim=self.addressTimeFeature_dataSet.tensors[0].shape[-1]
 		# self.seq_len = self.addressTimeFeature_dataSet.tensors[0].shape[-2]
 		# self.num_classes = self.addressTimeFeature_dataSet.tensors[1].unique().numel()
-
-
 
 		# self.addressTime_data_df=self._loadAddressTimeData()
 		# self._zipMethod=lz4.frame
@@ -155,7 +156,8 @@ class addressTimeDataClass:
 		self.addressTimeFeature_dataSet=dataSet
 		return dataSet	
 
-	def get_address_time_feature_dataSet(self, dataPath:str=None):
+	def get_address_time_feature_dataSet(self, dataPath:str=None,
+								compress:bool=BTNHGV2ParameterClass.compress_dataSet):
 		"""
 		获取地址时间特征数据集
 		参数：
@@ -169,6 +171,8 @@ class addressTimeDataClass:
 		dataDF=self._loadAddressTimeData(dataPath)
 		addressDict=self._processAddressTimeData(dataDF)
 		self.addressTimeFeature_dataSet=self._build_address_time_feature_dataSet(addressDict)
+		if compress:
+			self.addressTimeFeature_dataSet=self.compress_address_time_feature_dataSet()
 		return self.addressTimeFeature_dataSet
 
 	def compress_address_time_feature_dataSet(self):
