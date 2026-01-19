@@ -48,6 +48,7 @@ class DataSetModelTrainerTesterClass:
 		self._trainLoader=None
 		self._testLoader=None
 		self._kFold_k=kFold_k
+		self._trainingK=-1
 
 		###############设置优化器#############
 		self._optimizer = torch.optim.AdamW(self._model.parameters(),
@@ -68,7 +69,7 @@ class DataSetModelTrainerTesterClass:
 	def train_test(self, _useKFold:bool=False, **kwargs)->resultAnalysisClass:
 		
 		if not _useKFold:
-
+			self._trainingK=-1
 			self.resultAnalyCls=resultAnalysisClass(self._modelName,
 					folderPath=self._folderPath,
 					resultFolderName=self._resultFolderName,
@@ -116,10 +117,15 @@ class DataSetModelTrainerTesterClass:
 			if(epoch % epochDisplay == 0 or epoch==1):
 				epoch_loss_list.append((epoch, loss, accuracy))
 				trainTimeStr=time.strftime('%H:%M:%S', time.gmtime(time.time() - time1))
-				print(f"{self._modelName} | Epoch {epoch:3d}"
-		  				+f" | loss: {loss:.4f}"
+				kFoldStr=""
+				if self._trainingK!=-1:
+					kFoldStr=f" | kFold: {self._trainingK}/{self._kFold_k}"
+
+				print(self._modelName + kFoldStr
+						+f" | Epoch {epoch:3d}"
+						+f" | loss: {loss:.4f}"
 						+f" | accuracy: {accuracy:.4f}"
-		  				+f" | best Loss: {earlyStopping.best_loss:.4f}"
+						+f" | best Loss: {earlyStopping.best_loss:.4f}"
 						+f" | patience: {earlyStopping.counter:2d}"
 						+f" | used time: {trainTimeStr}")
 				
@@ -243,6 +249,13 @@ class DataSetModelTrainerTesterClass:
 		self.resultAnalyCls.all_preds = torch.cat(all_preds, dim=0)
 
 		time2 = time.time()
+
+		#计算并输出测试accuracy
+		correct = (self.resultAnalyCls.all_preds == self.resultAnalyCls.all_y_true).sum().item()
+		total = len(self.resultAnalyCls.all_y_true)
+		accuracy = correct / total
+		print(f"测试准确率: {accuracy:.4f}")
+
 		print(f"测试用时: {time2 - time1}")
 		# print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 	
@@ -270,6 +283,7 @@ class DataSetModelTrainerTesterClass:
 		for fold_idx, (train_idx, val_idx) in enumerate(KFold_indices):
 			# 显示第k折
 			print(f"Processing fold {fold_idx + 1}/{kFold_k}")
+			self._trainingK=fold_idx+1
 
 			# 重置测试结果存储
 			self.resultAnalyCls.all_y_true = None

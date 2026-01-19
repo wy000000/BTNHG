@@ -59,6 +59,7 @@ class HeteroModelTrainerTesterClass:
 		############kFold相关参数#############
 		# self._useKFold=useKFold
 		self._kFold_k=kFold_k
+		self._trainingK!=-1
 
 		###############设置优化器#############
 		self._optimizer = torch.optim.AdamW(self._model.parameters(),
@@ -84,6 +85,7 @@ class HeteroModelTrainerTesterClass:
 	def train_test(self, _useKFold:bool=False)->resultAnalysisClass:
 		#测试训练集通过heteroData['address'].kFold_masks传递
 		if not _useKFold:
+			self._trainingK=-1
 			self.resultAnalyCls=resultAnalysisClass(self._modelName,
 								folderPath=self._folderPath,
 								resultFolderName=self._resultFolderName,
@@ -117,10 +119,15 @@ class HeteroModelTrainerTesterClass:
 			if(epoch % epochDisplay == 0 or epoch==1):
 				epoch_loss_list.append((epoch, loss, accuracy))
 				trainTimeStr=time.strftime('%H:%M:%S', time.gmtime(time.time() - time1))
-				print(f"{self._modelName} | Epoch {epoch:3d}"
-		  				+f" | loss: {loss:.4f}"
-		  				+f" | accuracy: {accuracy:.4f}"
-		  				+f" | best Loss: {earlyStopping.best_loss:.4f}"
+				kFoldStr=""
+				if self._trainingK!=-1:
+					kFoldStr=f" | kFold: {self._trainingK}/{self._kFold_k}"
+
+				print(self._modelName + kFoldStr
+						+f" | Epoch {epoch:3d}"
+						+f" | loss: {loss:.4f}"
+						+f" | accuracy: {accuracy:.4f}"
+						+f" | best Loss: {earlyStopping.best_loss:.4f}"
 						+f" | patience: {earlyStopping.counter:2d}"
 						+f" | used time: {trainTimeStr}")
 				
@@ -274,6 +281,13 @@ class HeteroModelTrainerTesterClass:
 		self.resultAnalyCls.all_preds = torch.cat(all_preds, dim=0)		
 
 		time2 = time.time()
+
+		#计算并输出测试accuracy
+		correct = (self.resultAnalyCls.all_preds == self.resultAnalyCls.all_y_true).sum().item()
+		total = len(self.resultAnalyCls.all_y_true)
+		accuracy = correct / total
+		print(f"测试准确率: {accuracy:.4f}")
+
 		print(f"Testing completes, 测试用时: {time2 - time1}")
 		# print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 
@@ -292,7 +306,8 @@ class HeteroModelTrainerTesterClass:
 		k=1
 		# 进行 k 折交叉验证
 		for train_mask, test_mask in heteroData['address'].kFold_masks:
-			print(f"{k} Fold, total {self._kFold_k} fold")            
+			print(f"{k} Fold, total {self._kFold_k} fold")
+			self._trainingK=k
 			heteroData['address'].train_mask=train_mask
 			heteroData['address'].test_mask=test_mask
 			

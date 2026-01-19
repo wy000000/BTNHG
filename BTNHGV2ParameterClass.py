@@ -58,8 +58,12 @@ class BTNHGV2ParameterClass():
 		return int(cls._rng.integers(0, 4294967296))
 	
 	######## address Time Feature
-	cnn_hidden_channels=2
-	cnn_out_channels=2
+	#采用压缩数据，大量节省计算资源，但会损失准确率
+	compress_dataSet=True
+
+	cnn_hidden_channels=1 #recommended 1
+	cnn_out_channels=1 #recommended 1
+	# cnn_hidden_fc_out=4 #recommended 4
 
 	cnn_kernel_height=3
 	cnn_kernel_width=3
@@ -67,9 +71,9 @@ class BTNHGV2ParameterClass():
 	pool_height=2
 	pool_width=1
 
-	cnn_batch_size=2048
+	cnn_batch_size=4096
 
-	epochsDisplay_atf=1
+	epochsDisplay_atf=4
 
 
 
