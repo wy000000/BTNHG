@@ -49,6 +49,7 @@ class resultAnalysisClass:
 
 		# self.model=model
 		############################
+		self.trainning_accuracy=0.0
 		self.accuracy=0.0
 		self.training_time=None
 		self.end_epoch_loss=None
@@ -58,7 +59,6 @@ class resultAnalysisClass:
 		self.all_y_true=None
 		self.all_probs=None
 		self.all_preds=None
-		self.evaluationMetrics=None
 
 		#########################
 		self.best_model_state=None
@@ -172,7 +172,8 @@ class resultAnalysisClass:
 			"roc_auc_macro": roc_auc,
 			"pr_auc_macro": pr_auc,
 			"cohen_kappa": kappa,
-			"mcc": mcc
+			"mcc": mcc,
+			"training_accuracy": self.trainning_accuracy
 		}
 		self.evaluationMetrics=metrics
 		print("Evaluation metrics are computed.")

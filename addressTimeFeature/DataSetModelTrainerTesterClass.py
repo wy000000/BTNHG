@@ -155,6 +155,7 @@ class DataSetModelTrainerTesterClass:
 							+f" best accuracy: {earlyStopping.best_accuracy:.4f}"
 							)
 			
+			resultAnalyCls.trainning_accuracy=earlyStopping.best_accuracy
 			resultAnalyCls.best_epoch_loss=best_epoch_loss
 			#best_model_state已载入，可直接保存
 			resultAnalyCls.best_model_state=copy.deepcopy(self._model.state_dict())

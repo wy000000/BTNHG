@@ -2,7 +2,7 @@ import numpy as np
 
 #定义一个参数类，保存程序中用到的各种参数
 class BTNHGV2ParameterClass():
-	version="2026.1.14.1"
+	version="2026.1.20.1"
 	########### 训练
 	epochs=512 #Recommended 512
 
@@ -60,6 +60,8 @@ class BTNHGV2ParameterClass():
 	######## address Time Feature
 	#采用压缩数据，大量节省计算资源，但会损失准确率
 	compress_dataSet=True
+	#是否尝试读取保存addressTimeFeature_dataSet
+	try_read_save_addressTimeFeature_dataSet=True
 
 	cnn_hidden_channels=1 #recommended 1
 	cnn_out_channels=1 #recommended 1

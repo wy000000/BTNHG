@@ -13,7 +13,7 @@ from EarlyStoppingClass import EarlyStoppingClass
 from resultAnalysisClass import resultAnalysisClass
 from ExtendedNNModule import ExtendedNNModule
 from addressTimeDataClass import addressTimeDataClass
-from simple1DCNNClass import simple1DCNNClass
+from addressTimeFeature.CNN1D_DW_class import CNN1D_DW_class
 from DataSetModelTrainerTesterClass import DataSetModelTrainerTesterClass
 import torch
 import torch.nn as nn
@@ -28,7 +28,7 @@ print("import used time: ", time2 - time1)
 addressTimeDataCls=addressTimeDataClass()
 
 # 初始化模型类
-model=simple1DCNNClass(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)
+model=CNN1D_DW_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)
 
 # 初始化训练器测试器类
 TrainerTesterCls=DataSetModelTrainerTesterClass(model=model, addressTimeDataCls=addressTimeDataCls)
