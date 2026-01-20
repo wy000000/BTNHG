@@ -13,11 +13,20 @@ from sklearn.model_selection import train_test_split
 class addressTimeDataClass:
 	def __init__(self,
 		dataPath=BTNHGV2ParameterClass.dataPath,
-		compress:bool=BTNHGV2ParameterClass.compress_dataSet):
+		compress:bool=BTNHGV2ParameterClass.compress_dataSet,
+		try_read_save_addressTimeFeature_dataSet:bool\
+			=BTNHGV2ParameterClass.try_read_save_addressTimeFeature_dataSet,
+		):
 	
 		self._dataPath=dataPath
+		# 是否尝试读取保存addressTimeFeature_dataSet
+		# if true, 尝试读取保存的addressTimeFeature_dataSet, 如果不存在, 则重新构建
+		# if false, 不尝试读取保存的addressTimeFeature_dataSet, 直接重新构建
+		self._try_read_save_addressTimeFeature_dataSet\
+			=try_read_save_addressTimeFeature_dataSet
+		self._compress=compress
 
-		self.addressTimeFeature_dataSet=self.get_address_time_feature_dataSet(compress=compress)
+		self.addressTimeFeature_dataSet=self.get_address_time_feature_dataSet()
 
 		# self.feature_dim=self.addressTimeFeature_dataSet.tensors[0].shape[-1]
 		# self.seq_len = self.addressTimeFeature_dataSet.tensors[0].shape[-2]
@@ -156,8 +165,7 @@ class addressTimeDataClass:
 		self.addressTimeFeature_dataSet=dataSet
 		return dataSet	
 
-	def get_address_time_feature_dataSet(self, dataPath:str=None,
-								compress:bool=BTNHGV2ParameterClass.compress_dataSet):
+	def get_address_time_feature_dataSet(self):
 		"""
 		获取地址时间特征数据集
 		参数：
@@ -165,14 +173,23 @@ class addressTimeDataClass:
 		返回：
 			TensorDataset: 地址时间特征数据集
 		"""
-		if dataPath is None:
-			dataPath=self._dataPath
+		dataPath=self._dataPath
 
-		dataDF=self._loadAddressTimeData(dataPath)
-		addressDict=self._processAddressTimeData(dataDF)
-		self.addressTimeFeature_dataSet=self._build_address_time_feature_dataSet(addressDict)
-		if compress:
-			self.addressTimeFeature_dataSet=self.compress_address_time_feature_dataSet()
+		if self._try_read_save_addressTimeFeature_dataSet:
+			loadSuccessfully=self.load_tensor_dataset()
+
+		if not loadSuccessfully: # 加载失败，重新构建
+			print(f"load addressTimeFeature_dataSet failed, try to build it")
+
+			dataDF=self._loadAddressTimeData(dataPath)
+			addressDict=self._processAddressTimeData(dataDF)
+			self.addressTimeFeature_dataSet=self._build_address_time_feature_dataSet(addressDict)
+			if self._compress:
+				self.addressTimeFeature_dataSet=self.compress_address_time_feature_dataSet()
+
+			if self._try_read_save_addressTimeFeature_dataSet:
+				self.save_tensor_dataset()
+
 		return self.addressTimeFeature_dataSet
 
 	def compress_address_time_feature_dataSet(self):
@@ -374,6 +391,56 @@ class addressTimeDataClass:
 			.format(int(usedTime//3600), int((usedTime)//60), int(usedTime%60)))
 		
 		return KFoldIndices
+
+	def save_tensor_dataset(self):
+		"""
+		将 TensorDataset 保存到文件。
+		保存内容包括 dataset.tensors 中的所有张量。
+		"""
+		dataset = self.addressTimeFeature_dataSet
+		if dataset is None:
+			raise ValueError("addressTimeFeature_dataSet is None, please build it first.")
+
+		fullPath = os.path.join(self._dataPath, BTNHGV2ParameterClass.addressTimeFeature_dataSet_name)
+		
+		print(f"saving addressTimeFeature_dataSet to {fullPath}")
+
+		data_dict = {f"tensor_{i}": t for i, t in enumerate(dataset.tensors)}
+
+		torch.save(data_dict, fullPath)
+
+		print ("saved")
+		return fullPath
+
+	def load_tensor_dataset(self, path: str=None) -> bool:
+		"""
+		从文件中读取 TensorDataset。
+		加载成功返回 True，失败返回 False。
+		"""
+		try:
+			if path is None:
+				path = self._dataPath
+			fullPath = os.path.join(self._dataPath, BTNHGV2ParameterClass.addressTimeFeature_dataSet_name)
+		
+			print(f"loading addressTimeFeature_dataSet from {fullPath}")
+		
+			data_dict = torch.load(fullPath)
+	
+			tensors = [data_dict[key] for key in sorted(data_dict.keys())]
+	
+			self.addressTimeFeature_dataSet = TensorDataset(*tensors)
+		
+			print ("loaded")
+			return True
+		
+		# except FileNotFoundError:
+		# 	print(f"错误：数据集文件不存在 - {fullPath}")
+		# 	return False
+		except Exception as e:
+			print(f"加载 tensorDataset 失败: {e}")
+			return False
+
+
 
 
 # atd=addressTimeDataClass()

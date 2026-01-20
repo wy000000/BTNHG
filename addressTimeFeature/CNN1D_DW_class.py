@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from ExtendedNNModule import ExtendedNNModule
 from torch.utils.data import TensorDataset, DataLoader
 
-class simple1DCNNClass(ExtendedNNModule):
+class CNN1D_DW_class(ExtendedNNModule):
 	"""
 	各通道独立卷积（Depthwise 1D CNN）
 	输入: [batch, seq_len, feature_dim]

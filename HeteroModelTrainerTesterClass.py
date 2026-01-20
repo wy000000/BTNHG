@@ -59,7 +59,7 @@ class HeteroModelTrainerTesterClass:
 		############kFold相关参数#############
 		# self._useKFold=useKFold
 		self._kFold_k=kFold_k
-		self._trainingK!=-1
+		self._trainingK=-1
 
 		###############设置优化器#############
 		self._optimizer = torch.optim.AdamW(self._model.parameters(),
@@ -156,6 +156,7 @@ class HeteroModelTrainerTesterClass:
 							+f" best accuracy: {earlyStopping.best_accuracy:.4f}"
 							)
 			
+			resultAnalyCls.trainning_accuracy=earlyStopping.best_accuracy
 			resultAnalyCls.best_epoch_loss=best_epoch_loss
 			#best_model_state已载入，可直接保存
 			resultAnalyCls.best_model_state=copy.deepcopy(self._model.state_dict())
