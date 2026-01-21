@@ -6,64 +6,65 @@ import torch.nn.functional as F
 from ExtendedNNModule import ExtendedNNModule
 from torch.utils.data import TensorDataset, DataLoader
 
-# -------------------------
-# 主模型：加入 SE 注意力
-# -------------------------
-class CNN1D_DW_SE_class(nn.Module):
+#Input → DW → BN → ReLU → SE → (permute) → Transformer → FC
+#DW → SE → Transformer
+#DW+SE 分支：局部特征, Transformer 分支：全局特征, 最后 concat
+
+class CNN1D_DW_SE_Transformer_class(nn.Module):
 	def __init__(self, addressTimeFeature_dataSet,
 				 cnn_kernel_height=BTNHGV2ParameterClass.cnn_kernel_height,
-				 dropout_rate=BTNHGV2ParameterClass.dropout):
+				 dropout_rate=BTNHGV2ParameterClass.dropout,
+				 nhead=BTNHGV2ParameterClass.num_heads,
+				 num_layers=BTNHGV2ParameterClass.num_layers,
+				 dim_feedforward=128):
 
 		super().__init__()
 
-		self.feature_dim = addressTimeFeature_dataSet.tensors[0].shape[-1]  # D
-		self.seq_len = addressTimeFeature_dataSet.tensors[0].shape[-2]      # T=64
+		self.feature_dim = addressTimeFeature_dataSet.tensors[0].shape[-1]
+		self.seq_len = addressTimeFeature_dataSet.tensors[0].shape[-2]
 		self.num_classes = addressTimeFeature_dataSet.tensors[1].unique().numel()
 
-		self.cnn_in_channels = self.feature_dim
+		C = self.feature_dim
 
-		# Depthwise Conv
-		self.conv1 = nn.Conv1d(
-			in_channels=self.cnn_in_channels,
-			out_channels=self.cnn_in_channels,
-			kernel_size=cnn_kernel_height,
-			padding="same",
-			groups=self.cnn_in_channels
-		)
-		self.bn1 = nn.BatchNorm1d(self.cnn_in_channels)
-		# self.bn2 = nn.BatchNorm1d(self.cnn_in_channels)
-
-		# SE 通道注意力
-		self.se = SEBlock(self.cnn_in_channels, reduction=4)
-
+		# DW + BN + ReLU
+		self.conv1 = nn.Conv1d(C, C, cnn_kernel_height, padding="same", groups=C)
+		self.bn1 = nn.BatchNorm1d(C)
+		self.se = SEBlock(C, reduction=4)
 		self.dropout = nn.Dropout(dropout_rate)
 
-		# Flatten 后维度
-		flattened_size = self.cnn_in_channels * self.seq_len
-		self.fc_out = nn.Linear(flattened_size, self.num_classes)
+		# Transformer Encoder
+		encoder_layer = nn.TransformerEncoderLayer(
+			d_model=C,
+			nhead=nhead,
+			dim_feedforward=dim_feedforward,
+			dropout=dropout_rate,
+			batch_first=True
+		)
+		self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+
+		self.fc_out = nn.Linear(C * self.seq_len, self.num_classes)
 
 	def forward(self, x):
 		# [B, T, D] → [B, D, T]
 		x = x.permute(0, 2, 1)
 
-		# identity = self.bn2(x)  # ★ 残差分支
+		# DW + BN + ReLU + SE
+		x = self.bn1(self.conv1(x))
+		x = F.relu(x)
+		x = self.dropout(x)
+		x = self.se(x)
 
-		# DW + BN + ReLU
-		out = self.bn1(self.conv1(x))
-		out = F.relu(out)
-		out = self.dropout(out)
+		# [B, D, T] → [B, T, D]
+		x = x.permute(0, 2, 1)
 
-		# SE 注意力
-		out = self.se(out)
+		# Transformer
+		x = self.transformer(x)
 
-		# # ★ 残差相加
-		# out = out + identity
+		# Flatten + FC
+		x = torch.flatten(x, 1)
+		x = self.fc_out(self.dropout(x))
 
-		# 分类头
-		out = torch.flatten(out, 1)
-		out = self.fc_out(self.dropout(out))
-
-		return out
+		return x
 
 
 # -------------------------
