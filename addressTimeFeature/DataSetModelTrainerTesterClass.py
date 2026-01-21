@@ -70,7 +70,7 @@ class DataSetModelTrainerTesterClass:
 		
 		if not _useKFold:
 			self._trainingK=-1
-			self.resultAnalyCls=resultAnalysisClass(self._modelName,
+			self.resultAnalyCls=resultAnalysisClass(self._model,
 					folderPath=self._folderPath,
 					resultFolderName=self._resultFolderName,
 					kFold_k=self._kFold_k)
@@ -272,7 +272,7 @@ class DataSetModelTrainerTesterClass:
 		time1 = time.time()
 
 		kFold_k=self._kFold_k
-		self.resultAnalyCls=resultAnalysisClass(self._modelName,
+		self.resultAnalyCls=resultAnalysisClass(self._model,
 												folderPath=self._folderPath,
 												resultFolderName=self._resultFolderName,
 												kFold_k=kFold_k)

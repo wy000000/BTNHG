@@ -34,8 +34,8 @@ from sklearn.metrics import (
 
 class resultAnalysisClass:
 	def __init__(self,
-				# model:ExtendedNNModule,
-				modelName:str,
+				model:ExtendedNNModule,
+				# modelName:str,
 				folderPath:str=BTNHGV2ParameterClass.dataPath,
 				resultFolderName:str=BTNHGV2ParameterClass.resultFolderName,
 				# kFold:bool=BTNHGV2ParameterClass.kFold,
@@ -45,7 +45,8 @@ class resultAnalysisClass:
 		self.resultFolderPath=os.path.join(folderPath, self.resultFolderName)
 		self.methodFolderName=None
 		self.methodFolderPath=None
-		self.modelName=modelName
+		self.model=model
+		self.modelName=model.__class__.__name__
 
 		# self.model=model
 		############################
@@ -323,7 +324,8 @@ class resultAnalysisClass:
 		'''
 		if save:
 			self._createMethodFolder(_useKFold=False)
-			self._saveBTNHGV2ParameterClass()
+			self._saveClassFile(BTNHGV2ParameterClass)
+			self._saveClassFile(self.model.__class__)
 			self._saveExtendedAttributes()
 			self._save_epoch_loss_list()
 			self._saveY_true_preds_probs()
@@ -344,7 +346,8 @@ class resultAnalysisClass:
 		'''
 		if save:
 			self._createMethodFolder(_useKFold=True)
-			self._saveBTNHGV2ParameterClass()
+			self._saveClassFile(BTNHGV2ParameterClass)
+			self._saveClassFile(self.model.__class__)
 			self._save_extended_attributes_kFold()
 			self._save_evaluationMetrics_kFold()
 			if(saveModelStateDict):
@@ -374,16 +377,14 @@ class resultAnalysisClass:
 
 		return self.methodFolderPath
 	
-	def _saveBTNHGV2ParameterClass(self):
-		#复制BTNHGV2ParameterClass.py 到 folderPath
-		className=BTNHGV2ParameterClass.__name__
-		# srcFileName=className+".py"
+	def _saveClassFile(self, classModule):
+		#复制BTNHGV2ParameterClass.py 到 folderPath		
+		className=classModule.__name__
 		dstFileName=className+".txt"
 		filePath=os.path.join(self.methodFolderPath, dstFileName)
 
-		mod = sys.modules[BTNHGV2ParameterClass.__module__]
+		mod = sys.modules[classModule.__module__]
 		srcFilePath=mod.__file__
-		# print(mod.__file__)
 
 		shutil.copyfile(srcFilePath, filePath)
 		print(f"{dstFileName}已保存")

@@ -86,7 +86,7 @@ class HeteroModelTrainerTesterClass:
 		#测试训练集通过heteroData['address'].kFold_masks传递
 		if not _useKFold:
 			self._trainingK=-1
-			self.resultAnalyCls=resultAnalysisClass(self._modelName,
+			self.resultAnalyCls=resultAnalysisClass(self._model,
 								folderPath=self._folderPath,
 								resultFolderName=self._resultFolderName,
 								# useKFold=False,
@@ -295,7 +295,7 @@ class HeteroModelTrainerTesterClass:
 	def kFold_train_test(self, **kwargs)->resultAnalysisClass:
 		print("start kFold_train_test")
 		time1 = time.time()		
-		self.resultAnalyCls=resultAnalysisClass(self._modelName,
+		self.resultAnalyCls=resultAnalysisClass(self._model,
 					folderPath=self._folderPath,
 					resultFolderName=self._resultFolderName,
 					kFold_k=self._kFold_k)

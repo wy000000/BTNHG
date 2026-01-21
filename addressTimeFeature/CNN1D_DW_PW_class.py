@@ -15,8 +15,8 @@ class CNN1D_DW_PW_class(nn.Module):
 
     def __init__(self,
                  addressTimeFeature_dataSet,
-                 cnn_kernel_height=5,
-                 dropout_rate=0.2):
+                 cnn_kernel_height=BTNHGV2ParameterClass.cnn_kernel_height,
+                 dropout_rate=BTNHGV2ParameterClass.dropout):
 
         super().__init__()
 
