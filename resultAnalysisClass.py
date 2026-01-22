@@ -12,6 +12,7 @@ import platform
 import psutil
 import json
 import sys
+import math
 import cpuinfo
 import torch.nn.functional as F
 import pandas as pd
@@ -159,22 +160,23 @@ class resultAnalysisClass:
 		confidences = y_probs.max(axis=1)
 		avg_conf = confidences.mean()
 
-		metrics={			
-			"accuracy": acc,
-			"training_time": self.training_time,
-			"avg_confidence": avg_conf,
-			"balanced_accuracy": bal_acc,
-			"precision_macro": prec_macro,
-			"recall_macro": rec_macro,
-			"f1_macro": f1_macro,
-			"precision_weighted": prec_weighted,
-			"recall_weighted": rec_weighted,
-			"f1_weighted": f1_weighted,
-			"roc_auc_macro": roc_auc,
-			"pr_auc_macro": pr_auc,
-			"cohen_kappa": kappa,
-			"mcc": mcc,
-			"training_accuracy": self.trainning_accuracy
+		# 在compute_metrics方法中
+		metrics={            
+		    "accuracy": float(acc),  # 直接转换为Python float
+		    "training_time": self.training_time,
+		    "avg_confidence": float(avg_conf),
+		    "balanced_accuracy": float(bal_acc),
+		    "precision_macro": float(prec_macro),
+		    "recall_macro": float(rec_macro),
+		    "f1_macro": float(f1_macro),
+		    "precision_weighted": float(prec_weighted),
+		    "recall_weighted": float(rec_weighted),
+		    "f1_weighted": float(f1_weighted),
+		    "roc_auc_macro": float(roc_auc) if roc_auc is not None else None,
+		    "pr_auc_macro": float(pr_auc) if pr_auc is not None else None,
+		    "cohen_kappa": float(kappa),
+		    "mcc": float(mcc),
+		    "training_accuracy": float(self.trainning_accuracy)
 		}
 		self.evaluationMetrics=metrics
 		print("Evaluation metrics are computed.")
@@ -540,7 +542,7 @@ class resultAnalysisClass:
 		kFold_evaluations = self.kFold_evaluations  # list[dict]
 
 		# 创建工作簿和工作表
-		wb = xlsxwriter.Workbook(filePath)
+		wb = xlsxwriter.Workbook(filePath, {'nan_inf_to_errors': False})
 		ws = wb.add_worksheet("Metrics")
 
 		# 获取所有指标名（可能不同 fold 有不同指标）
@@ -549,6 +551,7 @@ class resultAnalysisClass:
 			if isinstance(eval_dict, dict):
 				all_metrics.update(eval_dict.keys())
 		all_metrics = list(all_metrics)
+		all_metrics.sort()
 
 		# 写标题行
 		headers = ["Metric"] + [f"Fold{i+1}" for i in range(len(kFold_evaluations))] + ["Average"]
@@ -561,6 +564,7 @@ class resultAnalysisClass:
 			# 写各 fold 的值
 			for col_idx, eval_dict in enumerate(kFold_evaluations, start=1):
 				value = eval_dict.get(metric, None)
+				value=self.excel_safe_value(value)
 				ws.write(row_idx, col_idx, value)
 
 			# 写平均公式
@@ -594,6 +598,25 @@ class resultAnalysisClass:
 		wb.close()
 		print(f"{fileName} 已保存")
 		return filePath
+
+
+	def excel_safe_value(self, v):
+
+		# 情况 1：不是 float，直接返回（int、str、None 都可以）
+		if not isinstance(v, float):
+			return v
+
+		# 情况 2：float 但为 NaN
+		if math.isnan(v):
+			return "NaN"   # 或者 return None / ""，看你需求
+
+		# 情况 3：float 但为 Inf 或 -Inf
+		if math.isinf(v):
+			return "Inf" if v > 0 else "-Inf"
+
+		# 情况 4：普通 float
+		return v
+
 
 	def serialize_trainTest_attributes(self):
 		attrs = {

@@ -78,6 +78,10 @@ class BTNHGV2ParameterClass():
 	epochsDisplay_atf=4
 
 
+	#########transformer
+	tf_dim_feedforward=32
+	tf_num_heads=1
+	tf_num_layers=1
 
 	
 
