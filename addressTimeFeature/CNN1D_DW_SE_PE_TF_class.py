@@ -6,17 +6,13 @@ import torch.nn.functional as F
 from ExtendedNNModule import ExtendedNNModule
 from torch.utils.data import TensorDataset, DataLoader
 
-#Input → DW → BN → ReLU → SE → (permute) → Transformer → FC
-#DW → SE → Transformer
-#DW+SE 分支：局部特征, Transformer 分支：全局特征, 最后 concat
-
-class CNN1D_DW_SE_Transformer_class(nn.Module):
+class CNN1D_DW_SE_PE_TF_class(nn.Module):
 	def __init__(self, addressTimeFeature_dataSet,
 				 cnn_kernel_height=BTNHGV2ParameterClass.cnn_kernel_height,
 				 dropout_rate=BTNHGV2ParameterClass.dropout,
-				 nhead=BTNHGV2ParameterClass.num_heads,
-				 num_layers=BTNHGV2ParameterClass.num_layers,
-				 dim_feedforward=128):
+				 nhead=BTNHGV2ParameterClass.tf_num_heads,
+				 num_layers=BTNHGV2ParameterClass.tf_num_layers,
+				 dim_feedforward=BTNHGV2ParameterClass.tf_dim_feedforward):
 
 		super().__init__()
 
@@ -26,11 +22,20 @@ class CNN1D_DW_SE_Transformer_class(nn.Module):
 
 		C = self.feature_dim
 
-		# DW + BN + ReLU
-		self.conv1 = nn.Conv1d(C, C, cnn_kernel_height, padding="same", groups=C)
-		self.bn1 = nn.BatchNorm1d(C)
-		self.se = SEBlock(C, reduction=4)
 		self.dropout = nn.Dropout(dropout_rate)
+
+		# Depthwise Convolution 通道卷积
+		self.convDW = nn.Conv1d(C, C, cnn_kernel_height, padding="same", groups=C)
+
+		self.bnDW = nn.BatchNorm1d(C)
+
+		# SE 通道注意力
+		self.se = SEBlock(C, reduction=4)
+		
+		# 位置编码 ConvPE
+		self.convPE = ConvPE(C)	
+
+		self.ln = nn.LayerNorm(C)		
 
 		# Transformer Encoder
 		encoder_layer = nn.TransformerEncoderLayer(
@@ -43,19 +48,26 @@ class CNN1D_DW_SE_Transformer_class(nn.Module):
 		self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
 
 		self.fc_out = nn.Linear(C * self.seq_len, self.num_classes)
-
+		
 	def forward(self, x):
 		# [B, T, D] → [B, D, T]
 		x = x.permute(0, 2, 1)
 
-		# DW + BN + ReLU + SE
-		x = self.bn1(self.conv1(x))
+		# DW
+		x = self.convDW(x)
+		x = self.bnDW(x)
 		x = F.relu(x)
 		x = self.dropout(x)
+
+		# SE 通道注意力
 		x = self.se(x)
 
-		# [B, D, T] → [B, T, D]
+		# 位置编码 ConvPE
+		x = self.convPE(x)
+
+		# [B, D, T] → [B, T, D]		
 		x = x.permute(0, 2, 1)
+		x = self.ln(x)
 
 		# Transformer
 		x = self.transformer(x)
@@ -93,3 +105,18 @@ class SEBlock(nn.Module):
 		y = y.view(b, c, 1)  # 重塑维度：[B, C] → [B, C, 1]
 
 		return x * y  # Scale：将通道权重应用到原始特征图
+
+class ConvPE(nn.Module):
+	def __init__(self, channels, kernel_size=3):
+		super().__init__()
+		self.convPE = nn.Conv1d(
+			channels, channels,
+			kernel_size=kernel_size,
+			padding=kernel_size // 2,
+			groups=channels
+		)
+
+	def forward(self, x):
+		# x: Conv1d 要求 [B, C, L]
+		# return x + self.conv(x.transpose(1, 2)).transpose(1, 2)
+		return x + self.convPE(x)
