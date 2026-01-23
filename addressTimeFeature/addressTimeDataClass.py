@@ -62,14 +62,65 @@ class addressTimeDataClass:
 					int((time2-time1)//60), int((time2-time1)%60), addressTime_data_df.shape))
 		return addressTime_data_df
 	
-	def _processAddressTimeData(self, addressTime_data_df):
+	def get_address_time_feature_dataSet(self):
+		"""
+		获取地址时间特征数据集
+		参数：
+			dataPath: 数据集路径
+		返回：
+			TensorDataset: 地址时间特征数据集
+		"""
+		dataPath=self._dataPath
+
+		if self._try_read_save_addressTimeFeature_dataSet:
+			loadSuccessfully=self.load_tensor_dataset()
+
+		if not loadSuccessfully: # 加载失败，重新构建
+			print(f"load addressTimeFeature_dataSet failed, try to build it")
+
+			dataDF=self._loadAddressTimeData(dataPath)
+			addressDict=self._processAddressTimeData(dataDF)
+			self.addressTimeFeature_dataSet=self._build_address_time_feature_dataSet(addressDict)
+			if self._compress:
+				self.addressTimeFeature_dataSet=self.compress_address_time_feature_dataSet()
+
+			if self._try_read_save_addressTimeFeature_dataSet:
+				self.save_tensor_dataset()
+
+		return self.addressTimeFeature_dataSet
+	
+	def _processAddressTimeData(self, addressTime_data_df):		
+		"""
+		处理地址时间数据，将每个地址的时间特征聚合到一个字典中
+		
+		此方法遍历地址时间数据，为每个地址创建或更新 addressTimeFeatureClass 实例，
+		处理时间特征，并最终更新差异特征。
+		
+		参数:
+		addressTime_data_df (pd.DataFrame): 包含地址时间数据的DataFrame，
+		至少包含 addressID 和 clusterID 列
+		
+		返回:
+		dict: 地址字典，键为 addressID，值为包含以下内容的字典：
+		- clusterID (int): 地址所属的聚类ID
+		- addressTimeFeatureCls (addressTimeFeatureClass): 包含处理后时间特征的实例
+		
+		执行流程:
+		1. 遍历输入的DataFrame中的每一行
+		2. 对每个addressID，创建或更新addressTimeFeatureClass实例
+		3. 调用process_address_time_features方法处理时间特征
+		4. 定期打印处理进度
+		5. 遍历所有地址，更新差异特征
+		6. 打印处理结果和耗时统计
+		"""
+		
 		print("start process address time data")
 		time1 = time.time()
 		rowCount = addressTime_data_df.shape[0]
 		
 		# 使用字典存储addressTimeFeatureCls实例
 		address_dict = {}
-
+	
 		# 使用itertuples()代替iterrows()，速度更快
 		for i, row_tuple in enumerate(addressTime_data_df.itertuples(index=False)):
 			addressID = row_tuple.addressID
@@ -100,21 +151,47 @@ class addressTimeDataClass:
 		# 输出处理时间 时：分：秒
 		usedTime=time2-time1
 		print("时间特性处理耗时：{}时{}分{}秒".format(int(usedTime//3600),
-								int((usedTime)//60), int(usedTime%60)))
-	
+									int((usedTime)//60), int(usedTime%60)))
+		
 		# #输出self.address_dict前64个元素
 		# print(list(self.address_dict.items())[:64])
 		return address_dict
 	
 	def _build_address_time_feature_dataSet(self, addressDict):
 		"""
-		生成DataSet，包含地址的时间特征数据
+		将地址字典中的时间特征数据构建成 PyTorch 的 TensorDataset
+		
+		此方法从 addressDict 中提取所有地址的时间特征和聚类标签，
+		构建成用于深度学习模型训练的标准化数据集。
+		
+		参数:
+			addressDict (dict): 地址字典，键为 addressID，值为包含以下内容的字典：
+				- clusterID (int): 地址所属的聚类ID
+				- addressTimeFeatureCls (addressTimeFeatureClass): 包含处理后时间特征的实例
+		
 		返回:
-			TensorDataset: 包含时间特征数据的Dataset
+			TensorDataset: PyTorch 数据集，包含两个张量：
+				- 第一个张量：时间特征数据，形状为 [num_addresses, feature_shape[0], feature_shape[1]]
+				- 第二个张量：连续化处理后的聚类标签，形状为 [num_addresses]
+		
+		执行流程:
+			1. 检查地址字典是否为空，为空则抛出 ValueError
+			2. 获取地址总数和第一个地址的特征形状
+			3. 预分配 NumPy 数组空间存储特征和标签
+			4. 遍历地址字典，填充特征和标签数据
+			5. 将非连续的 clusterID 映射为连续整数
+			6. 将 NumPy 数组转换为 PyTorch Tensor
+			7. 构造并返回 TensorDataset
+		
+		注意事项:
+			- 此方法会将非连续的 clusterID 转换为连续整数，以便模型训练
+			- 特征数据类型为 float，标签数据类型为 int64
+			- 方法会在内部设置 self.addressTimeFeature_dataSet 属性
 		"""
+	
 		print("start build self.addressTimeFeature_dataSet")
 		time1 = time.time()
-
+	
 		# print(time.strftime('%m-%d %H:%M:%S', time.localtime()))
 		# 1. 获取地址总数和特征形状
 		num_addresses = len(addressDict)
@@ -163,36 +240,9 @@ class addressTimeDataClass:
 		print("build self.addressTimeFeature_dataSet used time: {}时{}分{}秒"\
 			.format(int(usedTime//3600), int((usedTime)//60), int(usedTime%60)))
 		self.addressTimeFeature_dataSet=dataSet
-		return dataSet	
+		return dataSet
 
-	def get_address_time_feature_dataSet(self):
-		"""
-		获取地址时间特征数据集
-		参数：
-			dataPath: 数据集路径
-		返回：
-			TensorDataset: 地址时间特征数据集
-		"""
-		dataPath=self._dataPath
-
-		if self._try_read_save_addressTimeFeature_dataSet:
-			loadSuccessfully=self.load_tensor_dataset()
-
-		if not loadSuccessfully: # 加载失败，重新构建
-			print(f"load addressTimeFeature_dataSet failed, try to build it")
-
-			dataDF=self._loadAddressTimeData(dataPath)
-			addressDict=self._processAddressTimeData(dataDF)
-			self.addressTimeFeature_dataSet=self._build_address_time_feature_dataSet(addressDict)
-			if self._compress:
-				self.addressTimeFeature_dataSet=self.compress_address_time_feature_dataSet()
-
-			if self._try_read_save_addressTimeFeature_dataSet:
-				self.save_tensor_dataset()
-
-		return self.addressTimeFeature_dataSet
-
-	def compress_address_time_feature_dataSet(self):
+	def compress_address_time_feature_dataSet(self, minBlockID=addressTimeFeatureClass.minBlockID):
 		"""
 		压缩地址时间特征数据集：
 		对每个样本，过滤掉除第0列外全为0的时间步（时间步级过滤）
@@ -214,22 +264,22 @@ class addressTimeDataClass:
 		# 统计压缩前的总时间步（特征行数）
 		total_before = features.shape[0] * features.shape[1]
 		
-		# 直接进行时间步级过滤（跳过样本级过滤）
-
 		filtered_samples = []
 		# total_after = 0  # 统计压缩后的总特征行数
 		
 		for i in range(num_samples):
+			# 第i个样本的特征
 			sample_features = features[i]
+			# 过滤掉第0列全为0的时间步（时间步级过滤）
 			has_non_zero_step = torch.any(sample_features[:, 1:] != 0, dim=1)
 			filtered_sample = sample_features[has_non_zero_step]
-			
-			# 实现：在filtered_sample最左边添加一列全1
+
+			# 在filtered_sample最左边添加一列全1
 			# 创建全1列，形状为[时间步数量, 1]
 			ones_column = torch.ones(filtered_sample.shape[0], 1, device=filtered_sample.device)
 			# 在维度1（特征维度）上拼接全1列和原特征
 			filtered_sample = torch.cat([ones_column, filtered_sample], dim=1)
-			
+
 			#for i>0，如果第i行的第1个元素值减第i-1行的第1个元素值不等于1，则设置第i行的第0个元素值为差值
 			if filtered_sample.shape[0] > 1:  # 至少有两行数据才需要处理
 				# 计算相邻行第1个元素（索引1）的差值
@@ -238,9 +288,15 @@ class addressTimeDataClass:
 				mask = diffs != 1
 				# 将满足条件的行的第0个元素（索引0）设置为差值
 				filtered_sample[1:, 0][mask] = diffs[mask]
+			
+			#将样本的第0个时间步的第0个元素值设为filtered_sample[0, 1]-minBlockID
+			filtered_sample[0, 0] = filtered_sample[0, 1] - minBlockID
+			
+			#填充样本
+			filtered_sample = self.pad_compress_address_time_feature_dataSet(filtered_sample)
 
 			filtered_samples.append(filtered_sample)
-			# total_after += filtered_sample.shape[0]  # 累加每个样本保留的时间步数
+
 			if (i+1)%2001==0:
 				print("已完成{}行，进度{:.2f}%".format(i, i/num_samples*100))
 		
@@ -275,6 +331,73 @@ class addressTimeDataClass:
 		
 		self.addressTimeFeature_dataSet = padded_dataset		
 		return padded_dataset
+
+	def pad_compress_address_time_feature_dataSet(self
+						, feature:torch.Tensor
+						, kernel_size=BTNHGV2ParameterClass.cnn_kernel_height						
+						)->torch.Tensor:
+		"""
+		对地址时间特征数据集进行填充处理
+		
+		参数:
+			feature: 一个sample的时间特征张量，形状为[seq_len, num_features]
+			kernel_size: 卷积核大小，用于确定填充长度的阈值
+		返回：
+			processed_feature: 填充后的时间特征张量
+		
+		处理规则:
+			- 对feature的每个时间步的第0列（时间步标识）值d进行处理
+			- 如果d < 1，抛出ValueError异常
+			- 如果1 < d <= kernel_size，padding_size = d - 1
+			- 否则，padding_size = kernel_size
+			- 在当前时间步前面添加padding_size个时间步
+			- 每个填充的时间步第0个值为d，其他特征值为0
+		"""
+		if feature is None:
+			raise ValueError("feature cannot be None")
+		
+		seq_len, num_features = feature.shape
+		processed_segments = []
+		
+		for i in range(seq_len):
+			# 获取当前时间步的第0列值d
+			d = feature[i, 0]
+			
+			# 检查d是否小于0
+			if d < 0:
+				raise ValueError(f"时间步标识d必须大于等于0，但当前值为{d}")
+			
+			# 计算padding_size
+			if d > 1:
+				if d <= kernel_size:
+					padding_size = int(d - 1)
+				else:
+					padding_size = kernel_size
+				
+				# 创建填充时间步
+				# 形状为[padding_size, num_features]
+				padding = torch.zeros((padding_size, num_features), device=feature.device)
+
+				# 每个填充时间步的第0个值为d
+				padding[:, 0] = d
+
+				# # 为除了第0列之外的其他列添加轻微噪音扰动
+				# if num_features > 1:
+				# 	# 生成轻微噪音，使用标准差为0.01的正态分布
+				# 	noise = torch.randn((padding_size, num_features - 1), device=feature.device) * 0.0001
+				# 	# 将噪音添加到除了第0列之外的其他列
+				# 	padding[:, 1:] = noise
+				
+				# 将填充时间步添加到当前时间步前面
+				processed_segments.append(padding)
+			
+			# 添加当前时间步
+			processed_segments.append(feature[i].unsqueeze(0))
+		
+		# 拼接所有处理后的时间步
+		processed_feature = torch.cat(processed_segments, dim=0)
+		
+		return processed_feature
 
 	def get_address_time_feature_trainLoader_testLoaser(self,
 			train_size=BTNHGV2ParameterClass.train_size,

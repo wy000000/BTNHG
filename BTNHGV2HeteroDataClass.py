@@ -93,13 +93,13 @@ class BTNHGV2HeteroDataClass():
 
 		# 4. 构建节点特征矩阵
 		self.heteroData['address'].x = torch.tensor(
-			addr_feat_df.drop(columns=['addressID']).fillna(-1).values, dtype=torch.float
+			addr_feat_df.drop(columns=['addressID']).fillna(-1).values, dtype=torch.float32
 		)
 		self.heteroData['coin'].x = torch.tensor(
-			coin_feat_df.drop(columns=['coinID']).fillna(0).values, dtype=torch.float
+			coin_feat_df.drop(columns=['coinID']).fillna(0).values, dtype=torch.float32
 		)
 		self.heteroData['tx'].x = torch.tensor(
-			tx_feat_df.drop(columns=['txID']).fillna(0).values, dtype=torch.float
+			tx_feat_df.drop(columns=['txID']).fillna(0).values, dtype=torch.float32
 		)
 		time2 = time.time()
 		# print(f"构建ID map and 节点特征矩阵用时: {time2 - time1}")
@@ -302,7 +302,7 @@ class BTNHGV2HeteroDataClass():
 		train_labels = self.heteroData['address'].y[train_mask].cpu().numpy()
 		classes = np.unique(train_labels)
 		weights = compute_class_weight(class_weight='balanced', classes=classes, y=train_labels)
-		self.class_weight = torch.tensor(weights, dtype=torch.float)
+		self.class_weight = torch.tensor(weights, dtype=torch.float32)
 
 		time2 = time.time()
 		#打印划分信息
