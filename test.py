@@ -1,7 +1,5 @@
 # import addressTimeFeature.addressTimeDataClass
-k:int=None
-print(k is None or k<2)
-
+print(8e10)
 
 # class cClass:
 # 	def __init__(self, a:int=0, b:int=0):

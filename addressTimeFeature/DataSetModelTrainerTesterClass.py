@@ -8,6 +8,7 @@ import os
 import copy
 import torch.nn.functional as F
 from torch.utils.data import TensorDataset, DataLoader
+from transformers import get_cosine_schedule_with_warmup
 
 from EarlyStoppingClass import EarlyStoppingClass
 from BTNHGV2ParameterClass import BTNHGV2ParameterClass
@@ -28,7 +29,8 @@ class DataSetModelTrainerTesterClass:
 					# 结果分析类参数
 					folderPath:str=BTNHGV2ParameterClass.dataPath,
 					resultFolderName:str=BTNHGV2ParameterClass.resultFolderName,
-					kFold_k:int=BTNHGV2ParameterClass.kFold_k):
+					kFold_k:int=BTNHGV2ParameterClass.kFold_k,
+					batch_size=BTNHGV2ParameterClass.cnn_batch_size):
 		
 		# 检查 device 是否为 None
 		if device is None:
@@ -39,11 +41,11 @@ class DataSetModelTrainerTesterClass:
 		self._model = model
 		self.addressTimeDataCls=addressTimeDataCls
 		self._epochs = epochs
-		self._useTrainWeight=useTrainWeight	
+		self._batch_size=batch_size
+		self._useTrainWeight=useTrainWeight
 		self._lr = lr
 		self._weight_decay=weight_decay
 		self.criterion = nn.CrossEntropyLoss()
-
 
 		self._trainLoader=None
 		self._testLoader=None
@@ -55,6 +57,22 @@ class DataSetModelTrainerTesterClass:
 										lr=self._lr,
 										weight_decay=self._weight_decay)
 		#####################################
+		#addressTimeDataCls.addressTimeFeature_dataSet:tensorDataset
+		# self._batch_size=batch_size
+		# 每个epoch的batch数 = 数据集大小 / batch_size
+
+		datasetSize = len(addressTimeDataCls.addressTimeFeature_dataSet)
+
+		# 每个 epoch 的 batch 数
+		batches_per_epoch = (datasetSize + self._batch_size - 1) // self._batch_size
+		# 总 batch 数
+		self._total_num_batches = batches_per_epoch * self._epochs
+		self._warmup_steps = int(self._total_num_batches * 0.1)
+
+		self._lr_scheduler = get_cosine_schedule_with_warmup(
+				optimizer=self._optimizer,
+				num_warmup_steps=self._warmup_steps,
+				num_training_steps=self._total_num_batches)
 		
 		# # 早停相关变量
 		self._min_delta=min_delta
@@ -196,6 +214,8 @@ class DataSetModelTrainerTesterClass:
 			
 			# 优化
 			self._optimizer.step()
+			# 更新学习率
+			self._lr_scheduler.step()
 			
 			# 统计损失和准确率
 			running_loss += loss.item()
@@ -261,7 +281,7 @@ class DataSetModelTrainerTesterClass:
 		# print(f"当前时间: {time.strftime('%m-%d %H:%M:%S', time.localtime())}")
 	
 	def kFold_train_test(self
-						,cnn_batch_size=BTNHGV2ParameterClass.cnn_batch_size
+						# ,cnn_batch_size:int=BTNHGV2ParameterClass.cnn_batch_size
 						,shuffle=BTNHGV2ParameterClass.shuffle					
 						,**kwargs)->resultAnalysisClass:
 		dataSet=self.addressTimeDataCls.addressTimeFeature_dataSet
@@ -297,12 +317,12 @@ class DataSetModelTrainerTesterClass:
 			
 			# 创建DataLoader
 			self._trainLoader = DataLoader(train_dataset
-								, batch_size=cnn_batch_size
+								, batch_size=self._batch_size
 								, shuffle=shuffle
 								)
 			
 			self._testLoader = DataLoader(test_dataset
-								, batch_size=cnn_batch_size
+								, batch_size=self._batch_size
 								, shuffle=False
 								)
 			
@@ -310,6 +330,10 @@ class DataSetModelTrainerTesterClass:
 			self._optimizer = torch.optim.AdamW(self._model.parameters(),
 											lr=self._lr,
 											weight_decay=self._weight_decay)
+			self._lr_scheduler = get_cosine_schedule_with_warmup(
+				optimizer=self._optimizer,
+				num_warmup_steps=self._warmup_steps,
+				num_training_steps=self._total_num_batches)
 
 			self.train_test(_useKFold=True)
 

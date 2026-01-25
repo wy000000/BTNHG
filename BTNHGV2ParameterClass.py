@@ -2,17 +2,16 @@ import numpy as np
 
 #定义一个参数类，保存程序中用到的各种参数
 class BTNHGV2ParameterClass():
-	version="2026.1.20.1"
+	version="2026.1.26.1"
 	########### 训练
 	epochs=512 #Recommended 512
 
 	epochsDisplay_hetero=4
-	lr=0.01
-	# max_norm=100000000.0
+	lr=0.0003
 	dropout=0.35
-	weight_decay=1e-4
+	weight_decay=1e-2
 	useTrainWeight=False
-	
+
 	########### 交叉验证
 	kFold_k:int=5 #Recommended 5
 
@@ -60,13 +59,13 @@ class BTNHGV2ParameterClass():
 	######## address Time Feature###################
 	minBlockID=272375
 	maxBlockID=277995
-	277995
+
 	#采用压缩数据，大量节省计算资源，但会损失准确率
 	compress_dataSet=True
 
 	#是否尝试读取保存addressTimeFeature_dataSet##################################
 	#测试数据预处理时设置为False
-	try_read_save_addressTimeFeature_dataSet=False
+	try_read_save_addressTimeFeature_dataSet=True
 
 	#是否对压缩数据进行padding
 	compress_padding=True
@@ -95,7 +94,3 @@ class BTNHGV2ParameterClass():
 	tf_dim_feedforward=32
 	tf_num_heads=1
 	tf_num_layers=1
-
-	
-
-

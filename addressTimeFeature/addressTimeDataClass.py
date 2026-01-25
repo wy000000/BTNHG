@@ -392,7 +392,7 @@ class addressTimeDataClass:
 				# 为除了第0列之外的其他列添加轻微噪音扰动
 				if self._noisy_0:
 					# 生成轻微噪音，使用标准差为0.01的正态分布
-					noise = torch.randn((padding_size, num_features - 1), device=feature.device) * 0.0001
+					noise = torch.randn((padding_size, num_features - 1), device=feature.device) * 0.00001
 					# 将噪音添加到除了第0列之外的其他列
 					padding[:, 1:] = noise
 				

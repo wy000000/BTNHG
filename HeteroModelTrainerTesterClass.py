@@ -16,6 +16,7 @@ import copy
 from BTNHGV2HeteroDataClass import BTNHGV2HeteroDataClass
 from resultAnalysisClass import resultAnalysisClass
 from ExtendedNNModule import ExtendedNNModule
+from transformers import get_cosine_schedule_with_warmup
 
 class HeteroModelTrainerTesterClass:
 	def __init__(self, model:ExtendedNNModule,
@@ -29,7 +30,8 @@ class HeteroModelTrainerTesterClass:
 				# 结果分析类参数
 				folderPath:str=BTNHGV2ParameterClass.dataPath,
 				resultFolderName:str=BTNHGV2ParameterClass.resultFolderName,
-				kFold_k:int=BTNHGV2ParameterClass.kFold_k):
+				kFold_k:int=BTNHGV2ParameterClass.kFold_k,
+				batch_size=BTNHGV2ParameterClass.batch_size):
 		"""
 		通用训练器，支持早停
 		Args:
@@ -66,6 +68,20 @@ class HeteroModelTrainerTesterClass:
 										lr=self._lr,
 										weight_decay=self._weight_decay)
 		#####################################
+		
+		self._batch_size=batch_size
+		datasetSize = len(self._model.heteroData['address'].train_mask.nonzero(as_tuple=True)[0])
+		
+		# 每个 epoch 的 batch 数
+		batches_per_epoch = (datasetSize + self._batch_size - 1) // self._batch_size
+		# 总 batch 数
+		self._total_num_batches = batches_per_epoch * self._epochs
+		self._warmup_steps = int(self._total_num_batches * 0.1)
+
+		self._lr_scheduler = get_cosine_schedule_with_warmup(
+				optimizer=self._optimizer,
+				num_warmup_steps=self._warmup_steps,
+				num_training_steps=self._total_num_batches)
 		
 		###########早停相关变量#############
 		self._min_delta=min_delta
@@ -216,6 +232,7 @@ class HeteroModelTrainerTesterClass:
 			loss.backward()
 
 			self._optimizer.step()
+			self._lr_scheduler.step()
 
 			total_loss += loss.item()
 			total_batches += 1
@@ -322,6 +339,10 @@ class HeteroModelTrainerTesterClass:
 			self._optimizer = torch.optim.AdamW(self._model.parameters(),
 											lr=self._lr,
 											weight_decay=self._weight_decay)
+			self._lr_scheduler = get_cosine_schedule_with_warmup(
+				optimizer=self._optimizer,
+				num_warmup_steps=self._warmup_steps,
+				num_training_steps=self._total_num_batches)
 			
 			self.train_test(_useKFold=True)
 			self.resultAnalyCls.kFold_evaluations.append(self.resultAnalyCls.evaluationMetrics)

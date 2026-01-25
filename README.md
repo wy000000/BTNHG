@@ -1,6 +1,10 @@
 # BTNHG
 Bitcoin Transaction Network Heterogeneous Graph
 
+version="2026.1.26.1"
+
+added learning rate scheduler.
+
 version="2026.1.20.1"
 
 记录训练准确率，方便监测过拟合。
