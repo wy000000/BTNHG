@@ -57,11 +57,22 @@ class BTNHGV2ParameterClass():
 			cls._rng = np.random.default_rng(seed)
 		return int(cls._rng.integers(0, 4294967296))
 	
-	######## address Time Feature
+	######## address Time Feature###################
 	#采用压缩数据，大量节省计算资源，但会损失准确率
 	compress_dataSet=True
-	#是否尝试读取保存addressTimeFeature_dataSet
-	try_read_save_addressTimeFeature_dataSet=True
+
+	#是否尝试读取保存addressTimeFeature_dataSet##################################
+	#测试数据预处理时设置为False
+	try_read_save_addressTimeFeature_dataSet=False
+	##########################
+
+	#是否对压缩数据进行padding
+	compress_padding=True
+	#是否padding 0 添加轻微噪音扰动
+	noisy_0=True
+
+	#是否对addressTimeFeature中的amount类数值进行log变换，避免值过大值
+	log_addressTimeFeature_amount=True
 
 	cnn_hidden_channels=1 #recommended 1
 	cnn_out_channels=1 #recommended 1

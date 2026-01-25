@@ -14,19 +14,29 @@ class addressTimeDataClass:
 	def __init__(self,
 		dataPath=BTNHGV2ParameterClass.dataPath,
 		compress:bool=BTNHGV2ParameterClass.compress_dataSet,
+		compress_padding:bool=BTNHGV2ParameterClass.compress_padding,
+		noisy_0:bool=BTNHGV2ParameterClass.noisy_0,
+		log_addressTimeFeature_amount:bool=BTNHGV2ParameterClass.log_addressTimeFeature_amount,
 		try_read_save_addressTimeFeature_dataSet:bool\
 			=BTNHGV2ParameterClass.try_read_save_addressTimeFeature_dataSet,
 		):
 	
-		self._dataPath=dataPath
+		self._dataPath:str=dataPath
 		# 是否尝试读取保存addressTimeFeature_dataSet
 		# if true, 尝试读取保存的addressTimeFeature_dataSet, 如果不存在, 则重新构建
 		# if false, 不尝试读取保存的addressTimeFeature_dataSet, 直接重新构建
-		self._try_read_save_addressTimeFeature_dataSet\
+		self._try_read_save_addressTimeFeature_dataSet:bool\
 			=try_read_save_addressTimeFeature_dataSet
-		self._compress=compress
+		# 是否采用压缩数据
+		self._compress:bool=compress
+		# 是否对压缩数据进行padding
+		self._compress_padding:bool=compress_padding
+		# 是否padding 0 添加轻微噪音扰动
+		self._noisy_0:bool=noisy_0
+		# 是否对addressTimeFeature中的amount类数值进行log变换，避免值过大值
+		self._log_addressTimeFeature_amount:bool=log_addressTimeFeature_amount
 
-		self.addressTimeFeature_dataSet=self.get_address_time_feature_dataSet()
+		self.addressTimeFeature_dataSet:TensorDataset=self.get_address_time_feature_dataSet()
 
 		# self.feature_dim=self.addressTimeFeature_dataSet.tensors[0].shape[-1]
 		# self.seq_len = self.addressTimeFeature_dataSet.tensors[0].shape[-2]
@@ -62,7 +72,7 @@ class addressTimeDataClass:
 					int((time2-time1)//60), int((time2-time1)%60), addressTime_data_df.shape))
 		return addressTime_data_df
 	
-	def get_address_time_feature_dataSet(self):
+	def get_address_time_feature_dataSet(self)->TensorDataset:
 		"""
 		获取地址时间特征数据集
 		参数：
@@ -72,6 +82,7 @@ class addressTimeDataClass:
 		"""
 		dataPath=self._dataPath
 
+		loadSuccessfully=False
 		if self._try_read_save_addressTimeFeature_dataSet:
 			loadSuccessfully=self.load_tensor_dataset()
 
@@ -89,7 +100,7 @@ class addressTimeDataClass:
 
 		return self.addressTimeFeature_dataSet
 	
-	def _processAddressTimeData(self, addressTime_data_df):		
+	def _processAddressTimeData(self, addressTime_data_df:pd.DataFrame)->dict:		
 		"""
 		处理地址时间数据，将每个地址的时间特征聚合到一个字典中
 		
@@ -128,8 +139,9 @@ class addressTimeDataClass:
 			
 			if addressID not in address_dict:
 				# 创建新实例并存储到字典
-				addressTimeFeatureCls = addressTimeFeatureClass(row_tuple)
-				addressTimeFeatureCls.process_address_time_features(row_tuple)
+				addressTimeFeatureCls = addressTimeFeatureClass(row=row_tuple,
+						log_addressTimeFeature_amount=self._log_addressTimeFeature_amount)
+				addressTimeFeatureCls.process_address_time_features(row=row_tuple)
 				address_dict[addressID] = {
 					"clusterID": clusterID,
 					"addressTimeFeatureCls": addressTimeFeatureCls
@@ -157,7 +169,7 @@ class addressTimeDataClass:
 		# print(list(self.address_dict.items())[:64])
 		return address_dict
 	
-	def _build_address_time_feature_dataSet(self, addressDict):
+	def _build_address_time_feature_dataSet(self, addressDict:dict)->TensorDataset:
 		"""
 		将地址字典中的时间特征数据构建成 PyTorch 的 TensorDataset
 		
@@ -219,12 +231,8 @@ class addressTimeDataClass:
 			if (i+1)%2001==0:
 				print("已完成{}行，进度{:.2f}%".format(i, i/addressCount*100))
 		
-		# time3=time.time()
 		# 将非连续 clusterID 映射为连续整数
 		unique_ids, labels_np = np.unique(labels_np, return_inverse=True)
-		# time4=time.time()
-		# print("标签连续化用时: {}时{}分{}秒"\
-		# 	.format(int((time4-time3)//3600), int((time4-time3)//60), int((time4-time3)%60)))
 		
 		# 4. 转换为Tensor
 		features = torch.from_numpy(features_np)
@@ -242,7 +250,8 @@ class addressTimeDataClass:
 		self.addressTimeFeature_dataSet=dataSet
 		return dataSet
 
-	def compress_address_time_feature_dataSet(self, minBlockID=addressTimeFeatureClass.minBlockID):
+	def compress_address_time_feature_dataSet(self,
+				minBlockID: int = addressTimeFeatureClass.minBlockID)->TensorDataset:
 		"""
 		压缩地址时间特征数据集：
 		对每个样本，过滤掉除第0列外全为0的时间步（时间步级过滤）
@@ -292,8 +301,8 @@ class addressTimeDataClass:
 			#将样本的第0个时间步的第0个元素值设为filtered_sample[0, 1]-minBlockID
 			filtered_sample[0, 0] = filtered_sample[0, 1] - minBlockID
 			
-			#填充样本
-			filtered_sample = self.pad_compress_address_time_feature_dataSet(filtered_sample)
+			if self._compress_padding: #填充样本
+				filtered_sample = self.pad_compress_address_time_feature_dataSet(filtered_sample)
 
 			filtered_samples.append(filtered_sample)
 
@@ -381,12 +390,12 @@ class addressTimeDataClass:
 				# 每个填充时间步的第0个值为d
 				padding[:, 0] = d
 
-				# # 为除了第0列之外的其他列添加轻微噪音扰动
-				# if num_features > 1:
-				# 	# 生成轻微噪音，使用标准差为0.01的正态分布
-				# 	noise = torch.randn((padding_size, num_features - 1), device=feature.device) * 0.0001
-				# 	# 将噪音添加到除了第0列之外的其他列
-				# 	padding[:, 1:] = noise
+				# 为除了第0列之外的其他列添加轻微噪音扰动
+				if self._noisy_0:
+					# 生成轻微噪音，使用标准差为0.01的正态分布
+					noise = torch.randn((padding_size, num_features - 1), device=feature.device) * 0.0001
+					# 将噪音添加到除了第0列之外的其他列
+					padding[:, 1:] = noise
 				
 				# 将填充时间步添加到当前时间步前面
 				processed_segments.append(padding)
@@ -398,6 +407,19 @@ class addressTimeDataClass:
 		processed_feature = torch.cat(processed_segments, dim=0)
 		
 		return processed_feature
+	
+	def dataSet_log1p(self)->TensorDataset:
+		features, labels = self.addressTimeFeature_dataSet.tensors
+		# 对addressTimeFeature_dataSet的每个样本的第1列及之后的所有列进行log1p变换
+		# features[:, :, 1:] = torch.log1p(features[:, :, 1:])
+		# 对addressTimeFeature_dataSet的每个样本的所有列进行log1p变换
+		features = torch.log1p(features)
+
+		self.addressTimeFeature_dataSet = TensorDataset(features, labels)
+		return TensorDataset(features, labels)
+
+
+
 
 	def get_address_time_feature_trainLoader_testLoaser(self,
 			train_size=BTNHGV2ParameterClass.train_size,

@@ -33,9 +33,12 @@ class addressTimeFeatureClass:
 
 	#endregion
 
-	def __init__(self, row: Any):
+	def __init__(self, row: Any,
+			log_addressTimeFeature_amount:bool=BTNHGV2ParameterClass.log_addressTimeFeature_amount):
 		self.addressID = row.addressID
 		self.clusterID = row.clusterID
+
+		self._log_addressTimeFeature_amount=log_addressTimeFeature_amount
 		
 		# 使用 NumPy 数组替代 DataFrame，初始化所有值为0
 		# 形状：(spanOfBlocks, addressBlockFeatureCount)
@@ -100,3 +103,21 @@ class addressTimeFeatureClass:
 		self.block_features[:, self.DIF_TX_COUNT_IDX] = (
 				self.block_features[:, self.IN_TX_COUNT_IDX] - 
 				self.block_features[:, self.OUT_TX_COUNT_IDX])
+		
+		if self._log_addressTimeFeature_amount:
+			#对 self.block_features[:, self.COIN_AMOUNT_IDX],
+			# self.block_features[:, self.IN_COIN_AMOUNT_IDX],
+			# self.block_features[:, self.OUT_COIN_AMOUNT_IDX],
+			# 进行log变换，避免值过大值
+			# 避免log(0)错误，添加小常数
+			constant = 1e-10
+			self.block_features[:, self.COIN_AMOUNT_IDX] = np.log(
+				self.block_features[:, self.COIN_AMOUNT_IDX] + constant)
+			self.block_features[:, self.IN_COIN_AMOUNT_IDX] = np.log(
+				self.block_features[:, self.IN_COIN_AMOUNT_IDX] + constant)
+			self.block_features[:, self.OUT_COIN_AMOUNT_IDX] = np.log(
+				self.block_features[:, self.OUT_COIN_AMOUNT_IDX] + constant)
+	
+
+
+	
