@@ -61,4 +61,3 @@ resultAnalyCls.save_kFold()
 # resultAnalyCls.showExtendedAttributes()
 # resultAnalyCls.plot_true_pred_counts()
 # resultAnalyCls.plot_confusion_matrix()
-a=1

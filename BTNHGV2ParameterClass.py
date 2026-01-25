@@ -58,13 +58,15 @@ class BTNHGV2ParameterClass():
 		return int(cls._rng.integers(0, 4294967296))
 	
 	######## address Time Feature###################
+	minBlockID=272375
+	maxBlockID=277995
+	277995
 	#采用压缩数据，大量节省计算资源，但会损失准确率
 	compress_dataSet=True
 
 	#是否尝试读取保存addressTimeFeature_dataSet##################################
 	#测试数据预处理时设置为False
 	try_read_save_addressTimeFeature_dataSet=False
-	##########################
 
 	#是否对压缩数据进行padding
 	compress_padding=True
