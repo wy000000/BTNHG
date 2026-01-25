@@ -28,18 +28,24 @@ print("import used time: ", time2 - time1)
 addressTimeDataCls=addressTimeDataClass()
 
 # 初始化模型类
-model=CNN1D_DW_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)
+# model=CNN1D_DW_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)
+# model=CNN1D_DW_PW_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)
+# model=CNN1D_DW_SE_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)
+model=CNN1D_DW_SE_TF_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)
+# model=CNN1D_DW_TF_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)
+# model=CNN1D_TF_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)
+# model=CNN1D_DW_SE_PE_TF_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)
 
 # 初始化训练器测试器类
 TrainerTesterCls=DataSetModelTrainerTesterClass(model=model, addressTimeDataCls=addressTimeDataCls)
 resultAnalyCls=TrainerTesterCls.train_test()
-# resultAnalyCls=TrainerTesterCls.kFold_train_test()
+resultAnalyCls=TrainerTesterCls.kFold_train_test()
 
 # 保存结果分析类
 resultAnalyCls.save()
-# resultAnalyCls.save_kFold()
+resultAnalyCls.save_kFold()
 
-# resultAnalyCls.showEvaluationMetrics()
-# resultAnalyCls.showExtendedAttributes()
-# resultAnalyCls.plot_true_pred_counts()
-# resultAnalyCls.plot_confusion_matrix()
+resultAnalyCls.showEvaluationMetrics()
+resultAnalyCls.showExtendedAttributes()
+resultAnalyCls.plot_true_pred_counts()
+resultAnalyCls.plot_confusion_matrix()
