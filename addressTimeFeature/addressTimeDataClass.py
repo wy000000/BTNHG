@@ -279,9 +279,8 @@ class addressTimeDataClass:
 		for i in range(num_samples):
 			# 第i个样本的特征
 			sample_features = features[i]
-			# 过滤掉第0列全为0的时间步（时间步级过滤）
-			has_non_zero_step = torch.any(sample_features[:, 1:] != 0, dim=1)
-			filtered_sample = sample_features[has_non_zero_step]
+			#去掉sample_features中第0列等于-1的行
+			filtered_sample = sample_features[sample_features[:, 0] != -1]
 
 			# 在filtered_sample最左边添加一列全1
 			# 创建全1列，形状为[时间步数量, 1]
@@ -298,10 +297,10 @@ class addressTimeDataClass:
 				# 将满足条件的行的第0个元素（索引0）设置为差值
 				filtered_sample[1:, 0][mask] = diffs[mask]
 			
-			#将样本的第0个时间步的第0个元素值设为filtered_sample[0, 1]-minBlockID
+			#将样本的第0个时间步的第0个元素值设为 filtered_sample[0, 1]-minBlockID
 			filtered_sample[0, 0] = filtered_sample[0, 1] - minBlockID
 			
-			if self._compress_padding: #填充样本
+			if self._compress_padding: #填充样本################
 				filtered_sample = self.pad_compress_address_time_feature_dataSet(filtered_sample)
 
 			filtered_samples.append(filtered_sample)
@@ -374,7 +373,7 @@ class addressTimeDataClass:
 			
 			# 检查d是否小于0
 			if d < 0:
-				raise ValueError(f"时间步标识d必须大于等于0，但当前值为{d}")
+				raise ValueError(f"时间步标识d必须大于等于0，但当前值第{i}行为{d}")
 			
 			# 计算padding_size
 			if d > 1:

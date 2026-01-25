@@ -5,8 +5,8 @@ from typing import Any
 
 class addressTimeFeatureClass:
 	#region
-	minBlockID = 272375
-	maxBlockID = 277995
+	minBlockID = BTNHGV2ParameterClass.minBlockID
+	maxBlockID = BTNHGV2ParameterClass.maxBlockID
 	spanOfBlocks = maxBlockID - minBlockID + 1
 	addressBlockFeatureCount = 13
 	
