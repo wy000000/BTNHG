@@ -36,15 +36,15 @@ gmodel=SAGEClass(heteroData=heteroDataCls.heteroData)
 # 准备训练器测试器
 trainertester=HeteroModelTrainerTesterClass(model=gmodel)
 
-#单次训练测试
-resultAnalyCls=trainertester.train_test()
-resultAnalyCls.save()
+# #单次训练测试
+# resultAnalyCls=trainertester.train_test()
+# resultAnalyCls.save()
 
-#辅助显示
-resultAnalyCls.showEvaluationMetrics()
-resultAnalyCls.showExtendedAttributes()
-resultAnalyCls.plot_true_pred_counts()
-resultAnalyCls.plot_confusion_matrix()
+# #辅助显示
+# resultAnalyCls.showEvaluationMetrics()
+# resultAnalyCls.showExtendedAttributes()
+# resultAnalyCls.plot_true_pred_counts()
+# resultAnalyCls.plot_confusion_matrix()
 
 # 交叉验证
 resultAnalyCls=trainertester.kFold_train_test()
