@@ -5,11 +5,12 @@ class BTNHGV2ParameterClass():
 	version="2026.1.26.1"
 	########### 训练
 	epochs=512 #Recommended 512
-
 	epochsDisplay_hetero=4
-	lr=0.0003
+
+	lr=0.01
+	weight_decay=0.0001
+	useLrScheduler=True
 	dropout=0.35
-	weight_decay=1e-2
 	useTrainWeight=False
 
 	########### 交叉验证
