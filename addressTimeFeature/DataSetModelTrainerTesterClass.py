@@ -30,7 +30,9 @@ class DataSetModelTrainerTesterClass:
 					folderPath:str=BTNHGV2ParameterClass.dataPath,
 					resultFolderName:str=BTNHGV2ParameterClass.resultFolderName,
 					kFold_k:int=BTNHGV2ParameterClass.kFold_k,
-					batch_size=BTNHGV2ParameterClass.cnn_batch_size):
+					batch_size=BTNHGV2ParameterClass.cnn_batch_size,
+					useLrScheduler=BTNHGV2ParameterClass.useLrScheduler,
+					):
 		
 		# 检查 device 是否为 None
 		if device is None:
@@ -44,6 +46,7 @@ class DataSetModelTrainerTesterClass:
 		self._batch_size=batch_size
 		self._useTrainWeight=useTrainWeight
 		self._lr = lr
+		self._useLrScheduler=useLrScheduler
 		self._weight_decay=weight_decay
 		self.criterion = nn.CrossEntropyLoss()
 
@@ -215,7 +218,8 @@ class DataSetModelTrainerTesterClass:
 			# 优化
 			self._optimizer.step()
 			# 更新学习率
-			self._lr_scheduler.step()
+			if self._useLrScheduler:
+				self._lr_scheduler.step()
 			
 			# 统计损失和准确率
 			running_loss += loss.item()

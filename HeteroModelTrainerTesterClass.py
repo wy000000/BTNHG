@@ -31,7 +31,9 @@ class HeteroModelTrainerTesterClass:
 				folderPath:str=BTNHGV2ParameterClass.dataPath,
 				resultFolderName:str=BTNHGV2ParameterClass.resultFolderName,
 				kFold_k:int=BTNHGV2ParameterClass.kFold_k,
-				batch_size=BTNHGV2ParameterClass.batch_size):
+				batch_size=BTNHGV2ParameterClass.batch_size,
+				useLrScheduler=BTNHGV2ParameterClass.useLrScheduler,
+				):
 		"""
 		通用训练器，支持早停
 		Args:
@@ -56,6 +58,7 @@ class HeteroModelTrainerTesterClass:
 		self._epochs = epochs
 		self._useTrainWeight=useTrainWeight	
 		self._lr = lr
+		self._useLrScheduler=useLrScheduler
 		self._weight_decay=weight_decay
 
 		############kFold相关参数#############
@@ -232,7 +235,9 @@ class HeteroModelTrainerTesterClass:
 			loss.backward()
 
 			self._optimizer.step()
-			self._lr_scheduler.step()
+			# 更新学习率
+			if self._useLrScheduler:
+				self._lr_scheduler.step()
 
 			total_loss += loss.item()
 			total_batches += 1
