@@ -9,7 +9,7 @@ class BTNHGV2ParameterClass():
 
  	#Recommended 
 	#lr:0.01-0.02, useLrScheduler=False, 易冲高，但容易出现某折低。
-	#lr:0.04-0.06, useLrScheduler=True, 基本等效上面。0.05时出现过准确率最高值0.46+。
+	#lr:0.04-0.06, useLrScheduler=True, 基本等效上面。0.05时CNN1D_DW_SE_PE_TF出现过准确率最高值0.46+。
 	lr=0.01
 	useLrScheduler=True
 	dropout=0.35
