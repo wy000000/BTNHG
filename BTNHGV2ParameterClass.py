@@ -7,10 +7,13 @@ class BTNHGV2ParameterClass():
 	epochs=512 #Recommended 512
 	epochsDisplay=4
 
+ 	#Recommended 
+	#lr:0.01-0.02, useLrScheduler=False, 易冲高，但容易出现某折低。
+	#lr:0.04-0.06, useLrScheduler=True, 基本等效上面。0.05时出现过准确率最高值0.46+。
 	lr=0.01
-	weight_decay=0.0001
 	useLrScheduler=True
 	dropout=0.35
+	weight_decay=0.0001
 	useTrainWeight=False
 
 	########### 交叉验证
