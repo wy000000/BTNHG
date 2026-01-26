@@ -422,7 +422,7 @@ class addressTimeDataClass:
 
 	def get_address_time_feature_trainLoader_testLoaser(self,
 			train_size=BTNHGV2ParameterClass.train_size,
-			batch_size=BTNHGV2ParameterClass.cnn_batch_size,
+			batch_size=BTNHGV2ParameterClass.batch_size,
 			shuffle=BTNHGV2ParameterClass.shuffle,
 			resetSeed=BTNHGV2ParameterClass.resetSeed):
 		print("start build trainLoader and testLoaser")

@@ -33,6 +33,7 @@ class HeteroModelTrainerTesterClass:
 				kFold_k:int=BTNHGV2ParameterClass.kFold_k,
 				batch_size=BTNHGV2ParameterClass.batch_size,
 				useLrScheduler=BTNHGV2ParameterClass.useLrScheduler,
+				epochsDisplay=BTNHGV2ParameterClass.epochsDisplay
 				):
 		"""
 		通用训练器，支持早停
@@ -56,6 +57,7 @@ class HeteroModelTrainerTesterClass:
 
 		###########训练相关参数#############
 		self._epochs = epochs
+		self._epochsDisplay=epochsDisplay
 		self._useTrainWeight=useTrainWeight	
 		self._lr = lr
 		self._useLrScheduler=useLrScheduler
@@ -124,7 +126,7 @@ class HeteroModelTrainerTesterClass:
 		loss=float("inf")
 		# counter=0
 		epoch=0
-		epochDisplay=BTNHGV2ParameterClass.epochsDisplay_hetero
+		epochDisplay=self._epochsDisplay
 		earlyStopping=EarlyStoppingClass()		
 		epoch_loss_list=[]
 
