@@ -30,8 +30,9 @@ class DataSetModelTrainerTesterClass:
 					folderPath:str=BTNHGV2ParameterClass.dataPath,
 					resultFolderName:str=BTNHGV2ParameterClass.resultFolderName,
 					kFold_k:int=BTNHGV2ParameterClass.kFold_k,
-					batch_size=BTNHGV2ParameterClass.cnn_batch_size,
+					batch_size=BTNHGV2ParameterClass.batch_size,
 					useLrScheduler=BTNHGV2ParameterClass.useLrScheduler,
+					epochsDisplay=BTNHGV2ParameterClass.epochsDisplay
 					):
 		
 		# 检查 device 是否为 None
@@ -43,6 +44,7 @@ class DataSetModelTrainerTesterClass:
 		self._model = model
 		self.addressTimeDataCls=addressTimeDataCls
 		self._epochs = epochs
+		self._epochsDisplay=epochsDisplay
 		self._batch_size=batch_size
 		self._useTrainWeight=useTrainWeight
 		self._lr = lr
@@ -122,7 +124,7 @@ class DataSetModelTrainerTesterClass:
 		loss=float("inf")
 		# counter=0
 		epoch=0
-		epochDisplay=BTNHGV2ParameterClass.epochsDisplay_atf
+		epochDisplay=self._epochsDisplay
 		earlyStopping=EarlyStoppingClass()
 		epoch_loss_list=[]
 		# trainLoader, testLoader \

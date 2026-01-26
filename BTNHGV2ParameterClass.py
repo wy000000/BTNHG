@@ -5,7 +5,7 @@ class BTNHGV2ParameterClass():
 	version="2026.1.26.1"
 	########### 训练
 	epochs=512 #Recommended 512
-	epochsDisplay_hetero=4
+	epochsDisplay=4
 
 	lr=0.01
 	weight_decay=0.0001
@@ -85,11 +85,6 @@ class BTNHGV2ParameterClass():
 	
 	pool_height=2
 	pool_width=1
-
-	cnn_batch_size=4096
-
-	epochsDisplay_atf=4
-
 
 	#########transformer
 	tf_dim_feedforward=32
