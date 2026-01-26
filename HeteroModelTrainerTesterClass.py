@@ -82,11 +82,11 @@ class HeteroModelTrainerTesterClass:
 		# 总 batch 数
 		self._total_num_batches = batches_per_epoch * self._epochs
 		self._warmup_steps = int(self._total_num_batches * 0.1)
-
-		self._lr_scheduler = get_cosine_schedule_with_warmup(
-				optimizer=self._optimizer,
-				num_warmup_steps=self._warmup_steps,
-				num_training_steps=self._total_num_batches)
+		if self._useLrScheduler:
+			self._lr_scheduler = get_cosine_schedule_with_warmup(
+					optimizer=self._optimizer,
+					num_warmup_steps=self._warmup_steps,
+					num_training_steps=self._total_num_batches)
 		
 		###########早停相关变量#############
 		self._min_delta=min_delta
@@ -345,11 +345,12 @@ class HeteroModelTrainerTesterClass:
 			self._model=self._model.__class__(heteroData=heteroData, **kwargs)
 			self._optimizer = torch.optim.AdamW(self._model.parameters(),
 											lr=self._lr,
-											weight_decay=self._weight_decay)
-			self._lr_scheduler = get_cosine_schedule_with_warmup(
-				optimizer=self._optimizer,
-				num_warmup_steps=self._warmup_steps,
-				num_training_steps=self._total_num_batches)
+											weight_decay=self._weight_decay)				
+			if self._useLrScheduler:
+				self._lr_scheduler = get_cosine_schedule_with_warmup(
+						optimizer=self._optimizer,
+						num_warmup_steps=self._warmup_steps,
+						num_training_steps=self._total_num_batches)
 			
 			self.train_test(_useKFold=True)
 			self.resultAnalyCls.kFold_evaluations.append(self.resultAnalyCls.evaluationMetrics)
