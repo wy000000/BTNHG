@@ -7,14 +7,15 @@ class BTNHGV2ParameterClass():
 	epochs=512 #Recommended 512
 	epochsDisplay=4
 
- 	#Recommended 
-	#lr:0.01-0.02, useLrScheduler=False, 易冲高，但容易出现某折低。
-	#lr:0.04-0.06, useLrScheduler=True, 基本等效上面。0.05时CNN1D_DW_SE_PE_TF出现过准确率最高值0.46+。
-	lr=0.01
+	#heteroData,还未精调。当lr=0.01, useLrScheduler=False时, HGT出现过准确率最高值0.44+。
+	#addressTimeData, lr:0.01-0.02, useLrScheduler=False, 易冲高，但容易出现某折低。
+	#addressTimeData,lr:0.04-0.06, useLrScheduler=True, 基本等效上面，可能稍微稳定一点。
+	#addressTimeData, lr=0.05,useLrScheduler=True时CNN1D_DW_SE_PE_TF出现过准确率最高值0.46+。
+	lr=0.05
 	useLrScheduler=True
 	dropout=0.35
 	weight_decay=0.0001
-	useTrainWeight=False
+	useTrainWeight=False #效果好像不太好，建议False。
 
 	########### 交叉验证
 	kFold_k:int=5 #Recommended 5
@@ -64,19 +65,22 @@ class BTNHGV2ParameterClass():
 	minBlockID=272375
 	maxBlockID=277995
 
-	#采用压缩数据，大量节省计算资源，但会损失准确率
+	#采用压缩数据，大量节省计算资源，建议压缩。
 	compress_dataSet=True
 
-	#是否尝试读取保存addressTimeFeature_dataSet##################################
-	#测试数据预处理时设置为False
+	#是否尝试读取保存addressTimeFeature_dataSet
+	########注意：测试数据预处理时设置为False，或手动删除生成的数据集##############################
 	try_read_save_addressTimeFeature_dataSet=True
 
-	#是否对压缩数据进行padding
-	compress_padding=True
-	#是否padding 0 添加轻微噪音扰动
+	#是否根据压缩前的0特征行对压缩后的数据进行部分填充。
+	#false删除所有0特征行；true填充部分0特征行。特征行约相差4倍。
+	#compress_padding不建议开启True，开启会增加序列长度，训练时间增加，但准确率在CNN1D_DW_SE_PE_TF没见提升。
+	compress_padding=False #建议False。
+
+	#是否对padding 0 添加轻微噪音扰动。只有在compress_padding=True时才有效。
 	noisy_0=True
 
-	#是否对addressTimeFeature中的amount类数值进行log变换，避免值过大值
+	#是否对addressTimeFeature中的amount类数值进行log变换，避免值过大值。
 	log_addressTimeFeature_amount=True
 
 	cnn_hidden_channels=1 #recommended 1
@@ -90,6 +94,6 @@ class BTNHGV2ParameterClass():
 	pool_width=1
 
 	#########transformer
-	tf_dim_feedforward=32
-	tf_num_heads=1
-	tf_num_layers=1
+	tf_dim_feedforward=32 #减少，准确率会下降。增加，好像没什么变化。。
+	tf_num_heads=1 #head增加，准确率反而下降。
+	tf_num_layers=1 #layer增加，准确率未见提升，甚至会下降。
