@@ -8,12 +8,13 @@ class BTNHGV2ParameterClass():
 	epochsDisplay=4
 
 	#heteroData,还未精调。当lr=0.01, useLrScheduler=False时, HGT出现过准确率最高值0.44+。
-	#addressTimeData, lr:0.01-0.02, useLrScheduler=False, 易冲高，但容易出现某折低。
-	#addressTimeData,lr:0.04-0.06, useLrScheduler=True, 基本等效上面，可能稍微稳定一点。
-	#addressTimeData, lr=0.05,useLrScheduler=True时CNN1D_DW_SE_PE_TF出现过准确率最高值0.46+。
+	#addressTimeData(ATD), lr:0.01-0.02, useLrScheduler=False, 易冲高，但容易出现某折低。
+	#ATD, lr:0.05, useLrScheduler=True, 基本等效上面，可能稍微稳定一点。
+	#ATD, lr=0.05, useLrScheduler=True, dropout=0.1, patience=128时，CNN1D_DW_SE_PE_TF 准确率0.56+。
+	#ATD, 使用CNN1D_DW_SE_PE_TF_CLS，建议ropout=0.0， 准确率0.5+。
 	lr=0.05
 	useLrScheduler=True
-	dropout=0.35
+	dropout=0.1
 	weight_decay=0.0001
 	useTrainWeight=False #效果好像不太好，建议False。
 
@@ -21,7 +22,7 @@ class BTNHGV2ParameterClass():
 	kFold_k:int=5 #Recommended 5
 
 	########### 早停
-	patience=32 #recommended 32
+	patience=128
 	min_delta=0.01
 	stopableEpoch=128 #recommended 128
 
