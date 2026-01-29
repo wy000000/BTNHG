@@ -29,6 +29,7 @@ from CNN1D_DW_SE_TF_class import CNN1D_DW_SE_TF_class
 from CNN1D_DW_TF_class import CNN1D_DW_TF_class
 from CNN1D_TF_class import CNN1D_TF_class
 from CNN1D_DW_SE_PE_TF_class import CNN1D_DW_SE_PE_TF_class
+from CNN1D_DW_SE_PE_TF_CLS_class import CNN1D_DW_SE_PE_TF_CLS_class
 
 time2 = time.time()
 print("import used time: ", time2 - time1)
@@ -43,7 +44,9 @@ addressTimeDataCls=addressTimeDataClass()
 # model=CNN1D_DW_SE_TF_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)
 # model=CNN1D_DW_TF_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)
 # model=CNN1D_TF_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)
-model=CNN1D_DW_SE_PE_TF_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)
+# model=CNN1D_DW_SE_PE_TF_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)
+model=CNN1D_DW_SE_PE_TF_CLS_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)
+
 
 # 初始化训练器测试器类
 TrainerTesterCls=DataSetModelTrainerTesterClass(model=model, addressTimeDataCls=addressTimeDataCls)
