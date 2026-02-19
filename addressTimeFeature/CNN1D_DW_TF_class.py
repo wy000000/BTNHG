@@ -10,7 +10,7 @@ from torch.utils.data import TensorDataset, DataLoader
 #DW → SE → Transformer
 #DW+SE 分支：局部特征, Transformer 分支：全局特征, 最后 concat
 
-class CNN1D_DW_TF_class(nn.Module):
+class CNN1D_DW_TF_class(ExtendedNNModule):
 	def __init__(self, addressTimeFeature_dataSet,
 				 cnn_kernel_height=BTNHGV2ParameterClass.cnn_kernel_height,
 				 dropout_rate=BTNHGV2ParameterClass.dropout,

@@ -5,8 +5,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from ExtendedNNModule import ExtendedNNModule
 from torch.utils.data import TensorDataset, DataLoader
+from nnModule import SEBlock
 
-class CNN1D_DW_SE_TF_class(nn.Module):
+class CNN1D_DW_SE_TF_class(ExtendedNNModule):
 	def __init__(self, addressTimeFeature_dataSet,
 				 cnn_kernel_height=BTNHGV2ParameterClass.cnn_kernel_height,
 				 dropout_rate=BTNHGV2ParameterClass.dropout,
@@ -73,31 +74,31 @@ class CNN1D_DW_SE_TF_class(nn.Module):
 		return x
 
 
-# -------------------------
-# SE 通道注意力模块
-# -------------------------
-class SEBlock(nn.Module):
-	def __init__(self, channels, reduction=4):
-		super().__init__()
-		hidden = max(1, channels // reduction)
+# # -------------------------
+# # SE 通道注意力模块
+# # -------------------------
+# class SEBlock(nn.Module):
+# 	def __init__(self, channels, reduction=4):
+# 		super().__init__()
+# 		hidden = max(1, channels // reduction)
 
-		self.avg_pool = nn.AdaptiveAvgPool1d(1)  # [B, C, T] → [B, C, 1]
-		self.fc = nn.Sequential(
-			nn.Linear(channels, hidden),
-			nn.ReLU(inplace=True),
-			nn.Linear(hidden, channels),
-			nn.Sigmoid()
-		)
+# 		self.avg_pool = nn.AdaptiveAvgPool1d(1)  # [B, C, T] → [B, C, 1]
+# 		self.fc = nn.Sequential(
+# 			nn.Linear(channels, hidden),
+# 			nn.ReLU(inplace=True),
+# 			nn.Linear(hidden, channels),
+# 			nn.Sigmoid()
+# 		)
 
-	def forward(self, x):
-		b, c, t = x.size()  # [B, C, T]
+# 	def forward(self, x):
+# 		b, c, t = x.size()  # [B, C, T]
 
-		y = self.avg_pool(x).view(b, c)  # Squeeze：[B, C, T] → [B, C]
+# 		y = self.avg_pool(x).view(b, c)  # Squeeze：[B, C, T] → [B, C]
 
-		y = self.fc(y)  # Excitation：[B, C] → [B, C]（学习通道权重）
+# 		y = self.fc(y)  # Excitation：[B, C] → [B, C]（学习通道权重）
 
-		y = y.view(b, c, 1)  # 重塑维度：[B, C] → [B, C, 1]
+# 		y = y.view(b, c, 1)  # 重塑维度：[B, C] → [B, C, 1]
 
-		return x * y  # Scale：将通道权重应用到原始特征图
+# 		return x * y  # Scale：将通道权重应用到原始特征图
 
 

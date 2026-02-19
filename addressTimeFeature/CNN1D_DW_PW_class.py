@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from ExtendedNNModule import ExtendedNNModule
 from torch.utils.data import TensorDataset, DataLoader
 
-class CNN1D_DW_PW_class(nn.Module):
+class CNN1D_DW_PW_class(ExtendedNNModule):
     """
     Depthwise + Pointwise 1D CNN（MobileNet 风格）
     输入: [batch, seq_len, feature_dim]
