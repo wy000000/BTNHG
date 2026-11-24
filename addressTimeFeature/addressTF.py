@@ -1,27 +1,24 @@
-import set_parent_dir
+"""CNN1D_DW_TF 主实验（论文表 2 的最终模型）。
+
+运行方式（在仓库根目录下）：
+	python addressTimeFeature/addressTF.py
+
+论文协议为 ``BTNHGV2ParameterClass.addressTF_run_times`` 轮 x 5 折；
+每轮会重抽折划分与参数初始化，结果写入
+``<dataPath>/result/CNN1D_DW_TF_class-kFold-<时间>-acc <均值>/``。
+"""
+from set_parent_dir import setup_parent_dir
+setup_parent_dir()
+
 print("start import")
 import time
+
 time1 = time.time()
-import sys
-import os
-# 获取当前文件所在目录的父目录
-# parent_dir = os.path.abspath(os.path.join(os.getcwd(), ".."))
-# sys.path.append(parent_dir)
-import torch
-import torch.nn as nn
-import datetime
-from torch.utils.data import TensorDataset, DataLoader
-import numpy as np
-import importlib
+
 from BTNHGV2ParameterClass import BTNHGV2ParameterClass
-from addressTimeFeature.addressTimeFeatureClass import addressTimeFeatureClass
-from EarlyStoppingClass import EarlyStoppingClass
-from resultAnalysisClass import resultAnalysisClass
-from ExtendedNNModule import ExtendedNNModule
 from addressTimeDataClass import addressTimeDataClass
-from addressTimeFeature.CNN1D_DW_class import CNN1D_DW_class
 from DataSetModelTrainerTesterClass import DataSetModelTrainerTesterClass
-from simple2DCNNClass import simple2DCNNClass
+from CNN2D import simple2DCNNClass
 from CNN1D_DW_class import CNN1D_DW_class
 from CNN1D_DW_PW_class import CNN1D_DW_PW_class
 from CNN1D_DW_SE_class import CNN1D_DW_SE_class
@@ -31,36 +28,49 @@ from CNN1D_TF_class import CNN1D_TF_class
 from CNN1D_DW_SE_PE_TF_class import CNN1D_DW_SE_PE_TF_class
 from CNN1D_DW_SE_PE_TF_CLS_class import CNN1D_DW_SE_PE_TF_CLS_class
 
+
 time2 = time.time()
 print("import used time: ", time2 - time1)
 
-# 初始化数据类
-addressTimeDataCls=addressTimeDataClass()
 
-# 初始化模型类
-# model=CNN1D_DW_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)
-# model=CNN1D_DW_PW_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)
-# model=CNN1D_DW_SE_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)
-# model=CNN1D_DW_SE_TF_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)
-# model=CNN1D_DW_TF_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)
-# model=CNN1D_TF_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)
-# model=CNN1D_DW_SE_PE_TF_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)
-model=CNN1D_DW_SE_PE_TF_CLS_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)
+def build_model(addressTimeDataCls):
+	"""选择要训练的结构；默认即论文的最终模型 CNN1D_DW_TF（表 2 最后一行）。"""
+	# ---- 表 1：压缩方式消融由 NEW1/NEW2 脚本负责，这里固定为“压缩+区间”数据集 ----
+
+	# ---- 表 2：结构消融，取消注释其中一个 ----
+	# model=simple2DCNNClass(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)   # CNN2D
+	# model=CNN1D_TF_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)     # TF only
+	# model=CNN1D_DW_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)    # DW
+	# model=CNN1D_DW_SE_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet) # DW+SE
+	# model=CNN1D_DW_PW_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet) # DW+PW
+	model=CNN1D_DW_TF_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)   # DW+TF（最终模型）
+	# model=CNN1D_DW_SE_TF_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)
+	# model=CNN1D_DW_SE_PE_TF_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)
+	# model=CNN1D_DW_SE_PE_TF_CLS_class(addressTimeFeature_dataSet=addressTimeDataCls.addressTimeFeature_dataSet)
+
+	return model
 
 
-# 初始化训练器测试器类
-TrainerTesterCls=DataSetModelTrainerTesterClass(model=model, addressTimeDataCls=addressTimeDataCls)
+def run_once(run_i, run_times, addressTimeDataCls):
+	print(f"start addressTF run {run_i + 1}/{run_times}")
 
-# #单次
-# resultAnalyCls=TrainerTesterCls.train_test()
-# resultAnalyCls.save()
+	model = build_model(addressTimeDataCls)
+	trainerTesterCls = DataSetModelTrainerTesterClass(
+		model=model,
+		addressTimeDataCls=addressTimeDataCls
+	)
 
-#kfold
-resultAnalyCls=TrainerTesterCls.kFold_train_test()
-resultAnalyCls.save_kFold()
+	resultAnalyCls = trainerTesterCls.kFold_train_test()
+	resultAnalyCls.save_kFold()
 
-# #显示单次
-# resultAnalyCls.showEvaluationMetrics()
-# resultAnalyCls.showExtendedAttributes()
-# resultAnalyCls.plot_true_pred_counts()
-# resultAnalyCls.plot_confusion_matrix()
+	print(f"finish addressTF run {run_i + 1}/{run_times}")
+
+
+if __name__ == "__main__":
+
+	run_times = BTNHGV2ParameterClass.addressTF_run_times
+	print(f"addressTF: {run_times} run(s) x {BTNHGV2ParameterClass.kFold_k}-fold")
+	addressTimeDataCls = addressTimeDataClass()
+
+	for run_i in range(run_times):
+		run_once(run_i, run_times, addressTimeDataCls)

@@ -1,17 +1,12 @@
-# 获取当前文件所在目录的父目录
-import os
+from pathlib import Path
 import sys
 
-# 获取当前文件的绝对路径
-current_file = os.path.abspath(__file__)
-# print(f"current_file: {current_file}")
+def setup_parent_dir():
+	current_dir = Path(__file__).resolve().parent
+	project_root = current_dir.parent
 
-# 获取当前文件所在的目录
-current_dir = os.path.dirname(current_file)
-# print(f"current_dir: {current_dir}")
+	for path in (str(project_root), str(current_dir)):
+		if path not in sys.path:
+			sys.path.insert(0, path)
 
-# 获取当前目录的父目录（项目根目录）
-parent_dir = os.path.abspath(os.path.join(current_dir, ".."))
-# print(f"parent_dir: {parent_dir}")
-
-sys.path.append(parent_dir)
+setup_parent_dir()

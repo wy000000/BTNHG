@@ -1,11 +1,18 @@
+import os
+from pathlib import Path
+
 import numpy as np
 
 #定义一个参数类，保存程序中用到的各种参数
 class BTNHGV2ParameterClass():
-	version="2026.1.26.1"
+	version="2026.11.24.1"
 	########### 训练
 	epochs=512 #Recommended 512
 	epochsDisplay=4
+	# 论文协议：10 轮 x 5 折（每轮重抽折划分与初始化）。快速冒烟测试可设为 1。
+	addressTF_run_times=10
+	# 同上，图模型驱动 BTNHGV2.py 使用。
+	graph_run_times=10
 
 	#heteroData,还未精调。当lr=0.01, useLrScheduler=False时, HGT出现过准确率最高值0.44+。
 	#addressTimeData(ATD), lr:0.01-0.02, useLrScheduler=False, 易冲高，但容易出现某折低。
@@ -41,7 +48,10 @@ class BTNHGV2ParameterClass():
 	resetSeed=False
 
 	########### 存储
-	dataPath=r"D:\BTNHG\BTNHGV2"
+	# 数据目录：默认 <repo>/data；也可用环境变量 BTNHG_DATA_PATH 覆盖（如指向本机已有数据盘）。
+	dataPath = os.environ.get(
+			"BTNHG_DATA_PATH",
+			str(Path(__file__).resolve().parent / "data"))
 	resultFolderName="result"
 	extendedAttributesFileName="extendedAttributes.txt"
 	epoch_loss_listFileName="epoch_loss_list.xlsx"

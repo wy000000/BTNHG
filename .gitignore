@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# dataset and generated artefacts
+data/*.csv
+data/*.pt
+data/*.xlsx
+data/result/
+
+# local results if dataPath is overridden
+result/
